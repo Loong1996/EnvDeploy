@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
 from ui.widgets import ScrollableFrame
-from core.folder_pack import export_folder, import_folder
+from core.folder_pack import export_folder, import_folder, get_packages_dir
 
 
 class TabFolder(ttk.Frame):
@@ -155,13 +155,17 @@ class TabFolder(ttk.Frame):
 
     def _browse_save_zip(self, var):
         path = filedialog.asksaveasfilename(
+            initialdir=get_packages_dir(),
             defaultextension=".zip", filetypes=[("ZIP文件", "*.zip")]
         )
         if path:
             var.set(path)
 
     def _browse_open_zip(self, var):
-        path = filedialog.askopenfilename(filetypes=[("ZIP文件", "*.zip")])
+        path = filedialog.askopenfilename(
+            initialdir=get_packages_dir(),
+            filetypes=[("ZIP文件", "*.zip")]
+        )
         if path:
             var.set(path)
 

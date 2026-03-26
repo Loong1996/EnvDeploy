@@ -2,6 +2,14 @@ import os
 import shutil
 import zipfile
 
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PACKAGES_DIR = os.path.join(APP_DIR, "packages")
+
+
+def get_packages_dir():
+    os.makedirs(PACKAGES_DIR, exist_ok=True)
+    return PACKAGES_DIR
+
 
 def export_folder(source, output_zip_path):
     source = os.path.normpath(source)
