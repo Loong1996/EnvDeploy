@@ -13,14 +13,14 @@ class TabFolder(ttk.Frame):
         self.export_widgets = []
         self.import_widgets = []
 
-        # 上半部分：导出
-        export_frame = ttk.LabelFrame(self, text="导出（打包）", padding=5)
+        # 上半部分：打包
+        export_frame = ttk.LabelFrame(self, text="打包", padding=5)
         export_frame.pack(fill="both", expand=True, padx=5, pady=(5, 2))
 
         export_btn_bar = ttk.Frame(export_frame)
         export_btn_bar.pack(fill="x")
-        ttk.Button(export_btn_bar, text="+ 添加导出规则", command=self._add_export_rule).pack(side="left")
-        ttk.Button(export_btn_bar, text="全部导出", command=self._execute_all_exports).pack(side="right")
+        ttk.Button(export_btn_bar, text="+ 添加打包规则", command=self._add_export_rule).pack(side="left")
+        ttk.Button(export_btn_bar, text="全部打包", command=self._execute_all_exports).pack(side="right")
 
         self.export_scroll = ScrollableFrame(export_frame)
         self.export_scroll.pack(fill="both", expand=True, pady=5)
@@ -49,30 +49,30 @@ class TabFolder(ttk.Frame):
 
     def _add_export_rule(self, source="", output=""):
         idx = len(self.export_widgets)
-        frame = ttk.LabelFrame(self.export_scroll.inner, text=f"导出规则 {idx + 1}", padding=5)
+        frame = ttk.LabelFrame(self.export_scroll.inner, text=f"打包规则 {idx + 1}", padding=5)
         frame.pack(fill="x", padx=5, pady=2)
 
         row1 = ttk.Frame(frame)
         row1.pack(fill="x", pady=1)
-        ttk.Label(row1, text="源文件夹:", width=10).pack(side="left")
+        ttk.Label(row1, text="源路径:", width=10).pack(side="left")
         source_var = tk.StringVar(value=source)
-        source_entry = ttk.Entry(row1, textvariable=source_var)
-        source_entry.pack(side="left", fill="x", expand=True, padx=2)
-        ttk.Button(row1, text="浏览", width=6,
-                   command=lambda: self._browse_dir(source_var)).pack(side="left")
+        ttk.Entry(row1, textvariable=source_var).pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Button(row1, text="选文件夹", width=8,
+                   command=lambda: self._browse_dir(source_var)).pack(side="left", padx=(0, 2))
+        ttk.Button(row1, text="选文件", width=7,
+                   command=lambda: self._browse_file(source_var)).pack(side="left")
 
         row2 = ttk.Frame(frame)
         row2.pack(fill="x", pady=1)
         ttk.Label(row2, text="输出zip:", width=10).pack(side="left")
         output_var = tk.StringVar(value=output)
-        output_entry = ttk.Entry(row2, textvariable=output_var)
-        output_entry.pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Entry(row2, textvariable=output_var).pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(row2, text="浏览", width=6,
                    command=lambda: self._browse_save_zip(output_var)).pack(side="left")
 
         row3 = ttk.Frame(frame)
         row3.pack(fill="x", pady=1)
-        ttk.Button(row3, text="执行导出",
+        ttk.Button(row3, text="执行打包",
                    command=lambda: self._execute_export(source_var, output_var)).pack(side="left")
         ttk.Button(row3, text="删除", width=6,
                    command=lambda: self._remove_export_rule(frame, widget_data)).pack(side="right")
@@ -93,8 +93,7 @@ class TabFolder(ttk.Frame):
         row1.pack(fill="x", pady=1)
         ttk.Label(row1, text="zip文件:", width=10).pack(side="left")
         zip_var = tk.StringVar(value=zip_path)
-        zip_entry = ttk.Entry(row1, textvariable=zip_var)
-        zip_entry.pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Entry(row1, textvariable=zip_var).pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(row1, text="浏览", width=6,
                    command=lambda: self._browse_open_zip(zip_var)).pack(side="left")
 
@@ -102,8 +101,7 @@ class TabFolder(ttk.Frame):
         row2.pack(fill="x", pady=1)
         ttk.Label(row2, text="目标路径:", width=10).pack(side="left")
         target_var = tk.StringVar(value=target)
-        target_entry = ttk.Entry(row2, textvariable=target_var)
-        target_entry.pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Entry(row2, textvariable=target_var).pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(row2, text="浏览", width=6,
                    command=lambda: self._browse_dir(target_var)).pack(side="left")
 
@@ -122,7 +120,7 @@ class TabFolder(ttk.Frame):
         self._save()
 
     def _remove_export_rule(self, frame, widget_data):
-        if not messagebox.askyesno("确认", "确定删除此导出规则？"):
+        if not messagebox.askyesno("确认", "确定删除此打包规则？"):
             return
         frame.destroy()
         self.export_widgets.remove(widget_data)
@@ -139,7 +137,7 @@ class TabFolder(ttk.Frame):
 
     def _renumber_exports(self):
         for i, w in enumerate(self.export_widgets):
-            w["frame"].configure(text=f"导出规则 {i + 1}")
+            w["frame"].configure(text=f"打包规则 {i + 1}")
 
     def _renumber_imports(self):
         for i, w in enumerate(self.import_widgets):
@@ -147,6 +145,11 @@ class TabFolder(ttk.Frame):
 
     def _browse_dir(self, var):
         path = filedialog.askdirectory()
+        if path:
+            var.set(path)
+
+    def _browse_file(self, var):
+        path = filedialog.askopenfilename(filetypes=[("所有文件", "*.*")])
         if path:
             var.set(path)
 
@@ -166,7 +169,7 @@ class TabFolder(ttk.Frame):
         source = source_var.get().strip()
         output = output_var.get().strip()
         if not source or not output:
-            messagebox.showerror("错误", "请填写源文件夹和输出zip路径")
+            messagebox.showerror("错误", "请填写源路径和输出zip路径")
             return
         self._run_in_thread(export_folder, source, output)
 
@@ -182,9 +185,9 @@ class TabFolder(ttk.Frame):
 
     def _execute_all_exports(self):
         if not self.export_widgets:
-            messagebox.showinfo("提示", "没有导出规则")
+            messagebox.showinfo("提示", "没有打包规则")
             return
-        if not messagebox.askokcancel("确认", f"执行全部 {len(self.export_widgets)} 条导出规则？"):
+        if not messagebox.askokcancel("确认", f"执行全部 {len(self.export_widgets)} 条打包规则？"):
             return
         self._run_batch("export")
 

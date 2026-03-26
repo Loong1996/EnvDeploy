@@ -1,15 +1,14 @@
 import os
 import shutil
 import zipfile
-import tempfile
 
 
-def export_folder(source_dir, output_zip_path):
-    source_dir = os.path.normpath(source_dir)
+def export_folder(source, output_zip_path):
+    source = os.path.normpath(source)
     output_zip_path = os.path.normpath(output_zip_path)
 
-    if not os.path.isdir(source_dir):
-        raise ValueError(f"源文件夹不存在: {source_dir}")
+    if not os.path.exists(source):
+        raise ValueError(f"源路径不存在: {source}")
 
     output_dir = os.path.dirname(output_zip_path)
     if output_dir and not os.path.exists(output_dir):
@@ -17,12 +16,16 @@ def export_folder(source_dir, output_zip_path):
 
     file_count = 0
     with zipfile.ZipFile(output_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(source_dir):
-            for file in files:
-                abs_path = os.path.join(root, file)
-                arc_name = os.path.relpath(abs_path, source_dir)
-                zf.write(abs_path, arc_name)
-                file_count += 1
+        if os.path.isfile(source):
+            zf.write(source, os.path.basename(source))
+            file_count = 1
+        else:
+            for root, dirs, files in os.walk(source):
+                for file in files:
+                    abs_path = os.path.join(root, file)
+                    arc_name = os.path.relpath(abs_path, source)
+                    zf.write(abs_path, arc_name)
+                    file_count += 1
 
     return f"已打包 {file_count} 个文件到 {output_zip_path}"
 
