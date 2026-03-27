@@ -37,3 +37,41 @@ class ScrollableFrame(ttk.Frame):
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+
+class ProgressDialog(tk.Toplevel):
+    def __init__(self, parent, title="执行中..."):
+        super().__init__(parent)
+        self.title(title)
+        self.geometry("480x120")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+
+        self.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        frame = ttk.Frame(self, padding=15)
+        frame.pack(fill="both", expand=True)
+
+        self.label_var = tk.StringVar(value="准备中...")
+        ttk.Label(frame, textvariable=self.label_var, wraplength=440).pack(fill="x")
+
+        self.progress = ttk.Progressbar(frame, orient="horizontal", length=440, mode="determinate")
+        self.progress.pack(fill="x", pady=(8, 4))
+
+        self.detail_var = tk.StringVar(value="")
+        ttk.Label(frame, textvariable=self.detail_var, foreground="gray").pack(fill="x")
+
+    def update_progress(self, current, total, detail=""):
+        pct = int(current / total * 100) if total > 0 else 0
+        self.progress["maximum"] = total
+        self.progress["value"] = current
+        self.label_var.set(f"进度: {current}/{total} ({pct}%)")
+        if detail:
+            text = detail if len(detail) <= 60 else "..." + detail[-57:]
+            self.detail_var.set(text)
+        self.update_idletasks()
+
+    def done(self):
+        self.grab_release()
+        self.destroy()

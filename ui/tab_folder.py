@@ -1,8 +1,9 @@
+import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
-from ui.widgets import ScrollableFrame
-from core.folder_pack import export_folder, import_folder, get_packages_dir
+from ui.widgets import ScrollableFrame, ProgressDialog
+from core.folder_pack import export_folder, import_folder, get_packages_dir, PACKAGES_DIR
 
 
 class TabFolder(ttk.Frame):
@@ -153,13 +154,24 @@ class TabFolder(ttk.Frame):
         if path:
             var.set(path)
 
+    def _to_relative(self, path):
+        normed = os.path.normpath(path)
+        pkg = os.path.normpath(PACKAGES_DIR)
+        try:
+            rel = os.path.relpath(normed, pkg)
+            if not rel.startswith(".."):
+                return rel
+        except ValueError:
+            pass
+        return normed
+
     def _browse_save_zip(self, var):
         path = filedialog.asksaveasfilename(
             initialdir=get_packages_dir(),
             defaultextension=".zip", filetypes=[("ZIP文件", "*.zip")]
         )
         if path:
-            var.set(path)
+            var.set(self._to_relative(path))
 
     def _browse_open_zip(self, var):
         path = filedialog.askopenfilename(
@@ -167,7 +179,7 @@ class TabFolder(ttk.Frame):
             filetypes=[("ZIP文件", "*.zip")]
         )
         if path:
-            var.set(path)
+            var.set(self._to_relative(path))
 
     def _execute_export(self, source_var, output_var):
         source = source_var.get().strip()
@@ -175,7 +187,7 @@ class TabFolder(ttk.Frame):
         if not source or not output:
             messagebox.showerror("错误", "请填写源路径和输出zip路径")
             return
-        self._run_in_thread(export_folder, source, output)
+        self._run_with_progress("打包中...", export_folder, source, output)
 
     def _execute_import(self, zip_var, target_var):
         zip_path = zip_var.get().strip()
@@ -185,7 +197,7 @@ class TabFolder(ttk.Frame):
             return
         if not messagebox.askokcancel("确认", f"将覆盖目标路径:\n{target}\n是否继续？"):
             return
-        self._run_in_thread(import_folder, zip_path, target)
+        self._run_with_progress("导入中...", import_folder, zip_path, target)
 
     def _execute_all_exports(self):
         if not self.export_widgets:
@@ -193,7 +205,7 @@ class TabFolder(ttk.Frame):
             return
         if not messagebox.askokcancel("确认", f"执行全部 {len(self.export_widgets)} 条打包规则？"):
             return
-        self._run_batch("export")
+        self._run_batch_with_progress("export")
 
     def _execute_all_imports(self):
         if not self.import_widgets:
@@ -201,46 +213,63 @@ class TabFolder(ttk.Frame):
             return
         if not messagebox.askokcancel("确认", f"执行全部 {len(self.import_widgets)} 条导入规则？"):
             return
-        self._run_batch("import")
+        self._run_batch_with_progress("import")
 
-    def _run_batch(self, batch_type):
-        def worker():
-            results = []
-            if batch_type == "export":
-                for i, w in enumerate(self.export_widgets):
-                    try:
-                        msg = export_folder(w["source"].get(), w["output"].get())
-                        results.append(f"规则{i+1}: {msg}")
-                    except Exception as e:
-                        results.append(f"规则{i+1}: 失败 - {e}")
-            else:
-                for i, w in enumerate(self.import_widgets):
-                    try:
-                        msg = import_folder(w["zip_path"].get(), w["target"].get())
-                        results.append(f"规则{i+1}: {msg}")
-                    except Exception as e:
-                        results.append(f"规则{i+1}: 失败 - {e}")
-            summary = "\n".join(results)
-            self.after(0, lambda: self._show_batch_result(summary))
-
+    def _run_with_progress(self, title, func, *args):
+        dlg = ProgressDialog(self.winfo_toplevel(), title)
         self.status_var.set("执行中...")
-        threading.Thread(target=worker, daemon=True).start()
 
-    def _show_batch_result(self, summary):
-        self.status_var.set("完成")
-        messagebox.showinfo("执行结果", summary)
-
-    def _run_in_thread(self, func, *args):
-        self.status_var.set("执行中...")
+        def on_progress(current, total, detail):
+            self.after(0, lambda: dlg.update_progress(current, total, detail))
 
         def worker():
             try:
-                result = func(*args)
+                result = func(*args, progress_callback=on_progress)
+                self.after(0, lambda: dlg.done())
                 self.after(0, lambda: self.status_var.set(result))
                 self.after(0, lambda: messagebox.showinfo("成功", result))
             except Exception as e:
+                self.after(0, lambda: dlg.done())
                 self.after(0, lambda: self.status_var.set(f"失败: {e}"))
                 self.after(0, lambda: messagebox.showerror("错误", str(e)))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_batch_with_progress(self, batch_type):
+        if batch_type == "export":
+            rules = self.export_widgets
+            title = "批量打包中..."
+        else:
+            rules = self.import_widgets
+            title = "批量导入中..."
+
+        dlg = ProgressDialog(self.winfo_toplevel(), title)
+        total_rules = len(rules)
+        self.status_var.set("执行中...")
+
+        def worker():
+            results = []
+            for rule_idx, w in enumerate(rules):
+                def on_progress(current, total, detail):
+                    label = f"规则 {rule_idx+1}/{total_rules} - {current}/{total}"
+                    self.after(0, lambda l=label, c=current, t=total, d=detail:
+                               dlg.update_progress(c, t, f"{l}  {d}"))
+
+                try:
+                    if batch_type == "export":
+                        msg = export_folder(w["source"].get(), w["output"].get(),
+                                            progress_callback=on_progress)
+                    else:
+                        msg = import_folder(w["zip_path"].get(), w["target"].get(),
+                                            progress_callback=on_progress)
+                    results.append(f"规则{rule_idx+1}: {msg}")
+                except Exception as e:
+                    results.append(f"规则{rule_idx+1}: 失败 - {e}")
+
+            summary = "\n".join(results)
+            self.after(0, lambda: dlg.done())
+            self.after(0, lambda: self.status_var.set("完成"))
+            self.after(0, lambda: messagebox.showinfo("执行结果", summary))
 
         threading.Thread(target=worker, daemon=True).start()
 
