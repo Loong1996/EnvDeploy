@@ -2,7 +2,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 from config import load_config, save_config
-from ui.tab_folder import TabFolder
+from ui.tab_pack import TabPack
+from ui.tab_import import TabImport
 from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
 from ui.widgets import ProgressDialog, SelectionDialog
@@ -39,11 +40,13 @@ class App:
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.tab_folder = TabFolder(notebook, self.config, self._save)
+        self.tab_pack = TabPack(notebook, self.config, self._save)
+        self.tab_import = TabImport(notebook, self.config, self._save)
         self.tab_json = TabJson(notebook, self.config, self._save)
         self.tab_envvar = TabEnvVar(notebook, self.config, self._save)
 
-        notebook.add(self.tab_folder, text="  打包/导入  ")
+        notebook.add(self.tab_pack, text="  打包文件  ")
+        notebook.add(self.tab_import, text="  导入文件  ")
         notebook.add(self.tab_json, text="  JSON操作  ")
         notebook.add(self.tab_envvar, text="  环境变量  ")
 
