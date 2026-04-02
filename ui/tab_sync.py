@@ -23,21 +23,34 @@ class TabSync(ttk.Frame):
     # ── UI 构建 ──────────────────────────────────────────────────────────────
 
     def _build_ui(self):
-        # 顶部：方案选择栏
+        # 顶部：方案选择栏（放大醒目）
         profile_bar = ttk.Frame(self)
-        profile_bar.pack(fill="x", padx=5, pady=5)
+        profile_bar.pack(fill="x", padx=8, pady=(8, 4))
 
-        ttk.Label(profile_bar, text="同步方案:").pack(side="left")
+        ttk.Label(profile_bar, text="同步方案:", font=("", 12, "bold")).pack(side="left")
         self._profile_var = tk.StringVar()
         self._profile_combo = ttk.Combobox(profile_bar, textvariable=self._profile_var,
-                                           state="readonly", width=20)
-        self._profile_combo.pack(side="left", padx=(4, 8))
+                                           state="readonly", width=28,
+                                           font=("", 12))
+        self._profile_combo.pack(side="left", padx=(6, 12), ipady=3)
         self._profile_combo.bind("<<ComboboxSelected>>", self._on_profile_select)
 
         ttk.Button(profile_bar, text="+新建", command=self._new_profile).pack(side="left", padx=2)
         ttk.Button(profile_bar, text="复制", command=self._copy_profile).pack(side="left", padx=2)
         ttk.Button(profile_bar, text="重命名", command=self._rename_profile).pack(side="left", padx=2)
         ttk.Button(profile_bar, text="删除", command=self._delete_profile).pack(side="left", padx=2)
+
+        # 执行同步 + 状态栏（紧跟方案栏下方）
+        action_bar = ttk.Frame(self)
+        action_bar.pack(fill="x", padx=8, pady=(0, 6))
+        tk.Button(action_bar, text="  执行同步  ", bg="#4CAF50", fg="white",
+                  font=("", 10, "bold"), command=self._execute).pack(side="left", ipady=3)
+
+        self._status_var = tk.StringVar(value="就绪")
+        ttk.Label(action_bar, textvariable=self._status_var, relief="sunken",
+                  anchor="w").pack(side="left", fill="x", expand=True, padx=(8, 0))
+
+        ttk.Separator(self, orient="horizontal").pack(fill="x", padx=5, pady=(0, 4))
 
         # 主体：可滚动区域，分同步项和目标工程两段
         self._scroll = ScrollableFrame(self)
@@ -64,16 +77,6 @@ class TabSync(ttk.Frame):
 
         self._targets_list = ttk.Frame(self._targets_frame)
         self._targets_list.pack(fill="x")
-
-        # 底部：执行 + 状态栏
-        bottom = ttk.Frame(self)
-        bottom.pack(fill="x", padx=5, pady=(0, 5))
-        tk.Button(bottom, text="  执行同步  ", bg="#4CAF50", fg="white",
-                  font=("", 10, "bold"), command=self._execute).pack(side="left", ipady=3)
-
-        self._status_var = tk.StringVar(value="就绪")
-        ttk.Label(bottom, textvariable=self._status_var, relief="sunken",
-                  anchor="w").pack(side="left", fill="x", expand=True, padx=(8, 0))
 
     # ── 方案管理 ─────────────────────────────────────────────────────────────
 

@@ -34,7 +34,7 @@ class App:
 
         # === 页面1: 部署配置 ===
         deploy_page = ttk.Frame(top_notebook)
-        top_notebook.add(deploy_page, text="  部署配置  ")
+        top_notebook.add(deploy_page, text="  机器开发环境部署  ")
 
         deploy_bar = ttk.Frame(deploy_page)
         deploy_bar.pack(fill="x", padx=5, pady=5)
@@ -61,7 +61,7 @@ class App:
 
         # === 页面2: 批量同步 ===
         sync_page = ttk.Frame(top_notebook)
-        top_notebook.add(sync_page, text="  批量同步  ")
+        top_notebook.add(sync_page, text="  项目配置同步  ")
 
         sync_bar = ttk.Frame(sync_page)
         sync_bar.pack(fill="x", padx=5, pady=5)
