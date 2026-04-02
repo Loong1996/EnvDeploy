@@ -6,7 +6,7 @@ from ui.tab_pack import TabPack
 from ui.tab_import import TabImport
 from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
-from ui.widgets import ProgressDialog, SelectionDialog
+from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog
 import os
 import glob
 from core.folder_pack import export_folder, import_folder, PACKAGES_DIR, get_packages_dir
@@ -83,12 +83,11 @@ class App:
                 try:
                     msg = export_folder(rule.get("source", ""), rule.get("output", ""),
                                         progress_callback=on_progress)
-                    results.append(f"打包规则{i+1}: {msg}")
+                    results.append(f"✓ 打包规则{i+1}: {msg}")
                 except Exception as e:
-                    results.append(f"打包规则{i+1}: 失败 - {e}")
-            summary = "\n".join(results)
+                    results.append(f"✗ 打包规则{i+1}: 失败 - {e}")
             self.root.after(0, lambda: dlg.done())
-            self.root.after(0, lambda: messagebox.showinfo("一键打包结果", summary))
+            self.root.after(0, lambda r=results: ResultDialog(self.root, "一键打包结果", r).show())
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -162,8 +161,7 @@ class App:
                 except Exception as e:
                     results.append(f"✗ 失败 - {e}")
 
-            summary = "\n".join(results)
             self.root.after(0, lambda: dlg.done())
-            self.root.after(0, lambda: messagebox.showinfo("一键导入结果", summary))
+            self.root.after(0, lambda r=results: ResultDialog(self.root, "一键导入结果", r).show())
 
         threading.Thread(target=worker, daemon=True).start()

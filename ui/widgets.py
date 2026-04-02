@@ -118,8 +118,12 @@ class SelectionDialog(tk.Toplevel):
         # 确定/取消
         btn_row = tk.Frame(self)
         btn_row.pack(fill="x", padx=10, pady=(0, 10))
-        tk.Button(btn_row, text="确定", width=8, command=self._ok).pack(side="right", padx=(4, 0))
-        tk.Button(btn_row, text="取消", width=8, command=self._cancel).pack(side="right")
+        tk.Button(btn_row, text="确定", width=8, command=self._ok,
+                  bg="#4CAF50", fg="white", activebackground="#388E3C", activeforeground="white"
+                  ).pack(side="right", padx=(4, 0))
+        tk.Button(btn_row, text="取消", width=8, command=self._cancel,
+                  bg="#9E9E9E", fg="white", activebackground="#757575", activeforeground="white"
+                  ).pack(side="right")
 
         row_h = 30
         list_h = min(len(items), 12) * row_h
@@ -149,3 +153,53 @@ class SelectionDialog(tk.Toplevel):
     def show(self):
         self.wait_window()
         return self.result
+
+
+class ResultDialog(tk.Toplevel):
+    """显示批量操作结果，成功行绿色，失败行红色。"""
+
+    def __init__(self, parent, title, lines):
+        """lines: list of str，以 ✓ 开头为成功，以 ✗ 开头为失败"""
+        super().__init__(parent)
+        self.title(title)
+        self.resizable(True, True)
+        self.transient(parent)
+        self.grab_set()
+
+        frame = ttk.Frame(self, padding=10)
+        frame.pack(fill="both", expand=True)
+
+        text = tk.Text(frame, wrap="word", state="normal",
+                       font=("", 10), relief="flat", bg=self.cget("bg"))
+        text.tag_configure("ok", foreground="#2E7D32")
+        text.tag_configure("err", foreground="#C62828")
+        text.tag_configure("normal", foreground="#333333")
+
+        for line in lines:
+            if line.startswith("✓"):
+                text.insert("end", line + "\n", "ok")
+            elif line.startswith("✗"):
+                text.insert("end", line + "\n", "err")
+            else:
+                text.insert("end", line + "\n", "normal")
+
+        text.configure(state="disabled")
+        text.pack(fill="both", expand=True)
+
+        btn_row = tk.Frame(self)
+        btn_row.pack(fill="x", padx=10, pady=(0, 10))
+        tk.Button(btn_row, text="关闭", width=8, command=self._close,
+                  bg="#4CAF50", fg="white", activebackground="#388E3C", activeforeground="white"
+                  ).pack(side="right")
+
+        h = min(len(lines), 15) * 22 + 80
+        self.geometry(f"500x{h}")
+        self.minsize(400, 150)
+        self.protocol("WM_DELETE_WINDOW", self._close)
+
+    def _close(self):
+        self.grab_release()
+        self.destroy()
+
+    def show(self):
+        self.wait_window()
