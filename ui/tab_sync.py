@@ -101,8 +101,11 @@ class TabSync(ttk.Frame):
         self._profile_combo["values"] = names
         if names:
             prev = self._profile_var.get()
+            saved = self.config.get("ui_state", {}).get("sync_profile", "")
             if prev in names:
                 self._profile_combo.set(prev)
+            elif saved in names:
+                self._profile_combo.set(saved)
             else:
                 self._profile_combo.set(names[0])
             self._load_current_profile()
@@ -134,6 +137,8 @@ class TabSync(ttk.Frame):
 
     def _on_profile_select(self, _event=None):
         self._load_current_profile()
+        self.config.setdefault("ui_state", {})["sync_profile"] = self._profile_var.get()
+        self.save_callback()
 
     def _new_profile(self):
         name = simpledialog.askstring("新建方案", "请输入方案名称：", parent=self.winfo_toplevel())

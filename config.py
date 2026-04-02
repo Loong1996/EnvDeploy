@@ -10,6 +10,7 @@ DEFAULT_CONFIG = {
     "json_rules": [],
     "env_rules": [],
     "sync_profiles": [],
+    "ui_state": {},
 }
 
 
@@ -20,9 +21,9 @@ def load_config(path=None):
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        for key in DEFAULT_CONFIG:
+        for key, default in DEFAULT_CONFIG.items():
             if key not in data:
-                data[key] = []
+                data[key] = default if not isinstance(default, (list, dict)) else type(default)()
         return data
     except (json.JSONDecodeError, OSError):
         return json.loads(json.dumps(DEFAULT_CONFIG))

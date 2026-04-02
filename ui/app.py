@@ -29,8 +29,9 @@ class App:
         self.config = load_config()
 
         # 顶层 Notebook — 两套功能完全隔离
-        top_notebook = ttk.Notebook(self.root)
-        top_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+        self._top_notebook = ttk.Notebook(self.root)
+        self._top_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+        top_notebook = self._top_notebook
 
         # === 页面1: 部署配置 ===
         deploy_page = ttk.Frame(top_notebook)
@@ -46,8 +47,9 @@ class App:
         btn_import.pack(side="left", padx=10, ipady=4)
         ttk.Separator(deploy_page, orient="horizontal").pack(fill="x", padx=5)
 
-        deploy_notebook = ttk.Notebook(deploy_page)
-        deploy_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+        self._deploy_notebook = ttk.Notebook(deploy_page)
+        self._deploy_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+        deploy_notebook = self._deploy_notebook
 
         self.tab_pack = TabPack(deploy_notebook, self.config, self._save)
         self.tab_import = TabImport(deploy_notebook, self.config, self._save)
@@ -73,8 +75,36 @@ class App:
         self.tab_sync = TabSync(sync_page, self.config, self._save)
         self.tab_sync.pack(fill="both", expand=True, padx=5, pady=5)
 
+        # 绑定 tab 切换事件，保存界面状态
+        self._top_notebook.bind("<<NotebookTabChanged>>",
+                                lambda _: self._save_ui_state())
+        self._deploy_notebook.bind("<<NotebookTabChanged>>",
+                                   lambda _: self._save_ui_state())
+
+        # 启动后恢复上次界面位置
+        self.root.after(0, self._restore_ui_state)
+
     def _save(self):
         save_config(self.config)
+
+    def _save_ui_state(self):
+        ui = self.config.setdefault("ui_state", {})
+        ui["top_tab"] = self._top_notebook.index("current")
+        ui["deploy_tab"] = self._deploy_notebook.index("current")
+        save_config(self.config)
+
+    def _restore_ui_state(self):
+        ui = self.config.get("ui_state", {})
+        top = ui.get("top_tab", 0)
+        deploy = ui.get("deploy_tab", 0)
+        try:
+            self._top_notebook.select(top)
+        except Exception:
+            pass
+        try:
+            self._deploy_notebook.select(deploy)
+        except Exception:
+            pass
 
     def _one_key_pack(self):
         all_rules = self.config.get("export_rules", [])
