@@ -210,10 +210,10 @@ class TabSync(ttk.Frame):
 
     def _add_item(self, source="", dest_rel=""):
         frame = ttk.Frame(self._items_list, relief="groove", borderwidth=1)
-        frame.pack(fill="x", padx=2, pady=2)
+        frame.pack(fill="x", padx=2, pady=3)
 
         row1 = ttk.Frame(frame)
-        row1.pack(fill="x", padx=4, pady=(4, 1))
+        row1.pack(fill="x", padx=6, pady=(6, 2))
         ttk.Label(row1, text="源路径:", width=12).pack(side="left")
         source_var = tk.StringVar(value=source)
         ttk.Entry(row1, textvariable=source_var).pack(side="left", fill="x", expand=True, padx=2)
@@ -223,7 +223,7 @@ class TabSync(ttk.Frame):
                    command=lambda: self._browse_file(source_var)).pack(side="left")
 
         row2 = ttk.Frame(frame)
-        row2.pack(fill="x", padx=4, pady=(1, 4))
+        row2.pack(fill="x", padx=6, pady=(2, 6))
         ttk.Label(row2, text="目标相对路径:", width=12).pack(side="left")
         dest_var = tk.StringVar(value=dest_rel)
         ttk.Entry(row2, textvariable=dest_var).pack(side="left", fill="x", expand=True, padx=2)
@@ -245,7 +245,7 @@ class TabSync(ttk.Frame):
 
     def _add_target(self, path=""):
         frame = ttk.Frame(self._targets_list)
-        frame.pack(fill="x", padx=2, pady=1)
+        frame.pack(fill="x", padx=2, pady=2)
 
         path_var = tk.StringVar(value=path)
         ttk.Entry(frame, textvariable=path_var).pack(side="left", fill="x", expand=True, padx=(4, 2))

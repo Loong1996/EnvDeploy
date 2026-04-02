@@ -25,6 +25,11 @@ class TabEnvVar(ttk.Frame):
         self.scroll = ScrollableFrame(self)
         self.scroll.pack(fill="both", expand=True, padx=5)
 
+        self._empty_label = tk.Label(self.scroll.inner,
+            text="暂无环境变量规则，点击上方「+ 添加规则」添加",
+            fg="gray", font=("Microsoft YaHei UI", 9))
+        self._empty_label.pack(pady=30)
+
         self.status_var = tk.StringVar(value="就绪")
         ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").pack(fill="x", padx=5, pady=(0, 5))
 
@@ -36,18 +41,18 @@ class TabEnvVar(ttk.Frame):
     OPERATIONS = [("set", "设置变量"), ("append_path", "追加到PATH")]
 
     def _add_rule(self, name="", value="", operation="set"):
+        self._empty_label.pack_forget()
         idx = len(self.rule_widgets)
-        frame = ttk.LabelFrame(self.scroll.inner, text=f"规则 {idx + 1}", padding=5)
-        frame.pack(fill="x", padx=5, pady=2)
+        frame = ttk.LabelFrame(self.scroll.inner, text=f"规则 {idx + 1}", padding=8)
+        frame.pack(fill="x", padx=5, pady=4)
 
         row1 = ttk.Frame(frame)
-        row1.pack(fill="x", pady=1)
+        row1.pack(fill="x", pady=3)
         ttk.Label(row1, text="操作:", width=10).pack(side="left")
         op_var = tk.StringVar(value=operation)
         op_combo = ttk.Combobox(row1, textvariable=op_var, state="readonly", width=15,
                                 values=[k for k, _ in self.OPERATIONS])
         op_combo.pack(side="left", padx=2)
-        # 显示中文标签
         op_label_var = tk.StringVar()
         op_label = ttk.Label(row1, textvariable=op_label_var, foreground="gray")
         op_label.pack(side="left", padx=4)
@@ -59,23 +64,27 @@ class TabEnvVar(ttk.Frame):
         op_var.trace_add("write", _update_op_label)
 
         row2 = ttk.Frame(frame)
-        row2.pack(fill="x", pady=1)
+        row2.pack(fill="x", pady=3)
         ttk.Label(row2, text="变量名:", width=10).pack(side="left")
         name_var = tk.StringVar(value=name)
         ttk.Entry(row2, textvariable=name_var).pack(side="left", fill="x", expand=True, padx=2)
 
         row3 = ttk.Frame(frame)
-        row3.pack(fill="x", pady=1)
+        row3.pack(fill="x", pady=3)
         ttk.Label(row3, text="变量值:", width=10).pack(side="left")
         value_var = tk.StringVar(value=value)
         ttk.Entry(row3, textvariable=value_var).pack(side="left", fill="x", expand=True, padx=2)
 
         row4 = ttk.Frame(frame)
-        row4.pack(fill="x", pady=1)
+        row4.pack(fill="x", pady=3)
         ttk.Button(row4, text="执行此规则",
                    command=lambda: self._execute_rule(name_var, value_var, op_var)).pack(side="left")
         ttk.Button(row4, text="删除", width=6,
                    command=lambda: self._remove_rule(frame, widget_data)).pack(side="right")
+        ttk.Button(row4, text="↓", width=3,
+                   command=lambda: self._move_rule(widget_data, 1)).pack(side="right", padx=2)
+        ttk.Button(row4, text="↑", width=3,
+                   command=lambda: self._move_rule(widget_data, -1)).pack(side="right", padx=2)
 
         widget_data = {"frame": frame, "name": name_var, "value": value_var, "operation": op_var}
         self.rule_widgets.append(widget_data)
@@ -92,7 +101,26 @@ class TabEnvVar(ttk.Frame):
         self.rule_widgets.remove(widget_data)
         for i, w in enumerate(self.rule_widgets):
             w["frame"].configure(text=f"规则 {i + 1}")
+        if not self.rule_widgets:
+            self._empty_label.pack(pady=30)
         self._save()
+
+    def _move_rule(self, widget_data, direction):
+        idx = self.rule_widgets.index(widget_data)
+        new_idx = idx + direction
+        if new_idx < 0 or new_idx >= len(self.rule_widgets):
+            return
+        self.rule_widgets[idx], self.rule_widgets[new_idx] = \
+            self.rule_widgets[new_idx], self.rule_widgets[idx]
+        self._rebuild_order()
+        self._save()
+
+    def _rebuild_order(self):
+        for w in self.rule_widgets:
+            w["frame"].pack_forget()
+        for i, w in enumerate(self.rule_widgets):
+            w["frame"].pack(fill="x", padx=5, pady=4)
+            w["frame"].configure(text=f"规则 {i + 1}")
 
     def _execute_rule(self, name_var, value_var, op_var):
         name = name_var.get().strip()

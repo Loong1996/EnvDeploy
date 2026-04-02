@@ -1,4 +1,5 @@
 import json
+import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
@@ -21,6 +22,11 @@ class TabJson(ttk.Frame):
         self.scroll = ScrollableFrame(self)
         self.scroll.pack(fill="both", expand=True, padx=5)
 
+        self._empty_label = tk.Label(self.scroll.inner,
+            text="暂无 JSON 规则，点击上方「+ 添加规则」添加",
+            fg="gray", font=("Microsoft YaHei UI", 9))
+        self._empty_label.pack(pady=30)
+
         self.status_var = tk.StringVar(value="就绪")
         ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").pack(fill="x", padx=5, pady=(0, 5))
 
@@ -35,20 +41,22 @@ class TabJson(ttk.Frame):
             )
 
     def _add_rule(self, filepath="", operation="append", data=""):
+        self._empty_label.pack_forget()
         idx = len(self.rule_widgets)
-        frame = ttk.LabelFrame(self.scroll.inner, text=f"规则 {idx + 1}", padding=5)
-        frame.pack(fill="x", padx=5, pady=2)
+        frame = ttk.LabelFrame(self.scroll.inner, text=f"规则 {idx + 1}", padding=8)
+        frame.pack(fill="x", padx=5, pady=4)
 
         row1 = ttk.Frame(frame)
-        row1.pack(fill="x", pady=1)
+        row1.pack(fill="x", pady=3)
         ttk.Label(row1, text="JSON文件:", width=10).pack(side="left")
         filepath_var = tk.StringVar(value=filepath)
-        ttk.Entry(row1, textvariable=filepath_var).pack(side="left", fill="x", expand=True, padx=2)
+        filepath_entry = ttk.Entry(row1, textvariable=filepath_var)
+        filepath_entry.pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(row1, text="浏览", width=6,
                    command=lambda: self._browse_json(filepath_var)).pack(side="left")
 
         row2 = ttk.Frame(frame)
-        row2.pack(fill="x", pady=1)
+        row2.pack(fill="x", pady=3)
         ttk.Label(row2, text="操作类型:", width=10).pack(side="left")
         op_var = tk.StringVar(value=operation)
         op_combo = ttk.Combobox(row2, textvariable=op_var,
@@ -57,7 +65,7 @@ class TabJson(ttk.Frame):
         op_combo.pack(side="left")
 
         row3 = ttk.Frame(frame)
-        row3.pack(fill="x", pady=1)
+        row3.pack(fill="x", pady=3)
         ttk.Label(row3, text="数据(JSON):", width=10).pack(side="left", anchor="n")
         data_text = tk.Text(row3, height=4, width=50)
         data_text.pack(side="left", fill="x", expand=True, padx=2)
@@ -65,19 +73,30 @@ class TabJson(ttk.Frame):
             data_text.insert("1.0", data)
 
         row4 = ttk.Frame(frame)
-        row4.pack(fill="x", pady=1)
+        row4.pack(fill="x", pady=3)
         ttk.Button(row4, text="执行此规则",
                    command=lambda: self._execute_rule(filepath_var, op_var, data_text)).pack(side="left")
         ttk.Button(row4, text="删除", width=6,
                    command=lambda: self._remove_rule(frame, widget_data)).pack(side="right")
+        ttk.Button(row4, text="↓", width=3,
+                   command=lambda: self._move_rule(widget_data, 1)).pack(side="right", padx=2)
+        ttk.Button(row4, text="↑", width=3,
+                   command=lambda: self._move_rule(widget_data, -1)).pack(side="right", padx=2)
 
-        widget_data = {"frame": frame, "filepath": filepath_var, "operation": op_var, "data_text": data_text}
+        widget_data = {"frame": frame, "filepath": filepath_var, "operation": op_var,
+                       "data_text": data_text, "filepath_entry": filepath_entry}
         self.rule_widgets.append(widget_data)
 
+        filepath_var.trace_add("write", lambda *_: self._check_path(filepath_var, filepath_entry))
         filepath_var.trace_add("write", lambda *_: self._save())
         op_var.trace_add("write", lambda *_: self._save())
         data_text.bind("<KeyRelease>", lambda e: self._save())
+        self._check_path(filepath_var, filepath_entry)
         self._save()
+
+    def _check_path(self, var, entry):
+        p = var.get().strip()
+        entry.configure(foreground="red" if p and not os.path.exists(p) else "")
 
     def _remove_rule(self, frame, widget_data):
         if not messagebox.askyesno("确认", "确定删除此规则？"):
@@ -86,7 +105,26 @@ class TabJson(ttk.Frame):
         self.rule_widgets.remove(widget_data)
         for i, w in enumerate(self.rule_widgets):
             w["frame"].configure(text=f"规则 {i + 1}")
+        if not self.rule_widgets:
+            self._empty_label.pack(pady=30)
         self._save()
+
+    def _move_rule(self, widget_data, direction):
+        idx = self.rule_widgets.index(widget_data)
+        new_idx = idx + direction
+        if new_idx < 0 or new_idx >= len(self.rule_widgets):
+            return
+        self.rule_widgets[idx], self.rule_widgets[new_idx] = \
+            self.rule_widgets[new_idx], self.rule_widgets[idx]
+        self._rebuild_order()
+        self._save()
+
+    def _rebuild_order(self):
+        for w in self.rule_widgets:
+            w["frame"].pack_forget()
+        for i, w in enumerate(self.rule_widgets):
+            w["frame"].pack(fill="x", padx=5, pady=4)
+            w["frame"].configure(text=f"规则 {i + 1}")
 
     def _browse_json(self, var):
         path = filedialog.askopenfilename(filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")])

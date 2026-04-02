@@ -178,6 +178,58 @@ class SelectionDialog(tk.Toplevel):
         return self.result
 
 
+class LogPanel(ttk.Frame):
+    """可收起的操作日志面板，放在窗口底部。默认收起。"""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        from datetime import datetime
+        self._datetime = datetime
+
+        header = ttk.Frame(self)
+        header.pack(fill="x")
+        self._toggle_btn = ttk.Button(header, text="▲ 操作日志", width=14, command=self._toggle)
+        self._toggle_btn.pack(side="left")
+        ttk.Button(header, text="清空", width=6, command=self.clear).pack(side="right")
+
+        self._text_frame = ttk.Frame(self)
+        self._text = tk.Text(self._text_frame, height=7, state="disabled",
+                             font=("Consolas", 9), wrap="word")
+        sb = ttk.Scrollbar(self._text_frame, command=self._text.yview)
+        self._text.configure(yscrollcommand=sb.set)
+        self._text.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+        self._text.tag_configure("ok",  foreground="#2E7D32")
+        self._text.tag_configure("err", foreground="#C62828")
+        self._text.tag_configure("ts",  foreground="#9E9E9E")
+
+        self._expanded = False
+
+    def _toggle(self):
+        if self._expanded:
+            self._text_frame.pack_forget()
+            self._toggle_btn.configure(text="▲ 操作日志")
+        else:
+            self._text_frame.pack(fill="both", expand=True)
+            self._toggle_btn.configure(text="▼ 操作日志")
+        self._expanded = not self._expanded
+
+    def log(self, message, tag=""):
+        ts = self._datetime.now().strftime("%H:%M:%S")
+        self._text.configure(state="normal")
+        self._text.insert("end", f"[{ts}] ", "ts")
+        self._text.insert("end", message + "\n", tag)
+        self._text.see("end")
+        self._text.configure(state="disabled")
+        if not self._expanded:
+            self._toggle()
+
+    def clear(self):
+        self._text.configure(state="normal")
+        self._text.delete("1.0", "end")
+        self._text.configure(state="disabled")
+
+
 class ResultDialog(tk.Toplevel):
     """显示批量操作结果，成功行绿色，失败行红色。"""
 

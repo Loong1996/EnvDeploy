@@ -7,7 +7,7 @@ from ui.tab_import import TabImport
 from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
 from ui.tab_sync import TabSync
-from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog
+from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog, LogPanel
 import os
 import glob
 from core.folder_pack import export_folder, import_folder, PACKAGES_DIR, get_packages_dir
@@ -25,9 +25,17 @@ class App:
 
         style = ttk.Style()
         style.theme_use("clam")
+        style.configure(".", font=("Microsoft YaHei UI", 9))
+        style.configure("TLabelframe.Label", font=("Microsoft YaHei UI", 9, "bold"))
+        style.configure("TButton", padding=[8, 3])
+        style.configure("TNotebook.Tab", padding=[12, 4])
 
         self.config = load_config()
         self._ui_ready = False
+
+        # 日志面板固定在底部（先 pack 才能正确占位）
+        self.log_panel = LogPanel(self.root)
+        self.log_panel.pack(side="bottom", fill="x", padx=5, pady=(0, 5))
 
         # 顶层 Notebook — 两套功能完全隔离
         self._top_notebook = ttk.Notebook(self.root)
@@ -41,11 +49,17 @@ class App:
         deploy_bar = ttk.Frame(deploy_page)
         deploy_bar.pack(fill="x", padx=5, pady=5)
         btn_pack = tk.Button(deploy_bar, text="  一键打包  ", bg="#4CAF50", fg="white",
-                             font=("", 11, "bold"), command=self._one_key_pack)
-        btn_pack.pack(side="left", padx=10, ipady=4)
+                             font=("Microsoft YaHei UI", 11, "bold"),
+                             relief="flat", bd=0, cursor="hand2",
+                             activebackground="#388E3C", activeforeground="white",
+                             command=self._one_key_pack)
+        btn_pack.pack(side="left", padx=10, ipady=6)
         btn_import = tk.Button(deploy_bar, text="  一键导入  ", bg="#2196F3", fg="white",
-                               font=("", 11, "bold"), command=self._one_key_import)
-        btn_import.pack(side="left", padx=10, ipady=4)
+                               font=("Microsoft YaHei UI", 11, "bold"),
+                               relief="flat", bd=0, cursor="hand2",
+                               activebackground="#1565C0", activeforeground="white",
+                               command=self._one_key_import)
+        btn_import.pack(side="left", padx=10, ipady=6)
         ttk.Separator(deploy_page, orient="horizontal").pack(fill="x", padx=5)
 
         self._deploy_notebook = ttk.Notebook(deploy_page)
@@ -69,8 +83,11 @@ class App:
         sync_bar = ttk.Frame(sync_page)
         sync_bar.pack(fill="x", padx=5, pady=5)
         btn_sync = tk.Button(sync_bar, text="  一键同步  ", bg="#9C27B0", fg="white",
-                             font=("", 11, "bold"), command=self._one_key_sync)
-        btn_sync.pack(side="left", padx=10, ipady=4)
+                             font=("Microsoft YaHei UI", 11, "bold"),
+                             relief="flat", bd=0, cursor="hand2",
+                             activebackground="#6A1B9A", activeforeground="white",
+                             command=self._one_key_sync)
+        btn_sync.pack(side="left", padx=10, ipady=6)
         ttk.Separator(sync_page, orient="horizontal").pack(fill="x", padx=5)
 
         self.tab_sync = TabSync(sync_page, self.config, self._save)
@@ -143,8 +160,13 @@ class App:
                     results.append(f"✓ 打包规则{i+1}: {msg}")
                 except Exception as e:
                     results.append(f"✗ 打包规则{i+1}: 失败 - {e}")
+            ok = sum(1 for r in results if r.startswith("✓"))
+            fail = sum(1 for r in results if r.startswith("✗"))
+            tag = "ok" if fail == 0 else "err"
+            summary = f"一键打包完成: {ok} 成功 / {fail} 失败"
             self.root.after(0, lambda: dlg.done())
             self.root.after(0, lambda r=results: ResultDialog(self.root, "一键打包结果", r).show())
+            self.root.after(0, lambda s=summary, t=tag: self.log_panel.log(s, t))
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -218,8 +240,13 @@ class App:
                 except Exception as e:
                     results.append(f"✗ 失败 - {e}")
 
+            ok = sum(1 for r in results if r.startswith("✓"))
+            fail = sum(1 for r in results if r.startswith("✗"))
+            tag = "ok" if fail == 0 else "err"
+            summary = f"一键导入完成: {ok} 成功 / {fail} 失败"
             self.root.after(0, lambda: dlg.done())
             self.root.after(0, lambda r=results: ResultDialog(self.root, "一键导入结果", r).show())
+            self.root.after(0, lambda s=summary, t=tag: self.log_panel.log(s, t))
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -258,7 +285,12 @@ class App:
                 self.root.after(0, lambda: dlg.update_progress(current, total, detail))
 
             results = sync_files(items, chosen_targets, progress_callback=on_progress)
+            ok = sum(1 for r in results if r.startswith("✓"))
+            fail = sum(1 for r in results if r.startswith("✗"))
+            tag = "ok" if fail == 0 else "err"
+            summary = f"一键同步完成: {ok} 成功 / {fail} 失败"
             self.root.after(0, lambda: dlg.done())
             self.root.after(0, lambda r=results: ResultDialog(self.root, "一键同步结果", r).show())
+            self.root.after(0, lambda s=summary, t=tag: self.log_panel.log(s, t))
 
         threading.Thread(target=worker, daemon=True).start()

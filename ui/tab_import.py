@@ -21,6 +21,11 @@ class TabImport(ttk.Frame):
         self.scroll = ScrollableFrame(self)
         self.scroll.pack(fill="both", expand=True, padx=5)
 
+        self._empty_label = tk.Label(self.scroll.inner,
+            text="暂无导入规则，点击上方「+ 添加导入规则」添加",
+            fg="gray", font=("Microsoft YaHei UI", 9))
+        self._empty_label.pack(pady=30)
+
         self.status_var = tk.StringVar(value="就绪")
         ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").pack(fill="x", padx=5, pady=(0, 5))
 
@@ -30,39 +35,55 @@ class TabImport(ttk.Frame):
         self._loading = False
 
     def _add_rule(self, zip_path="", target=""):
+        self._empty_label.pack_forget()
         idx = len(self.import_widgets)
-        frame = ttk.LabelFrame(self.scroll.inner, text=f"导入规则 {idx + 1}", padding=5)
-        frame.pack(fill="x", padx=5, pady=2)
+        frame = ttk.LabelFrame(self.scroll.inner, text=f"导入规则 {idx + 1}", padding=8)
+        frame.pack(fill="x", padx=5, pady=4)
 
         row1 = ttk.Frame(frame)
-        row1.pack(fill="x", pady=1)
+        row1.pack(fill="x", pady=3)
         ttk.Label(row1, text="zip文件:", width=10).pack(side="left")
         zip_var = tk.StringVar(value=zip_path)
-        ttk.Entry(row1, textvariable=zip_var).pack(side="left", fill="x", expand=True, padx=2)
+        zip_entry = ttk.Entry(row1, textvariable=zip_var)
+        zip_entry.pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(row1, text="浏览", width=6,
                    command=lambda: self._browse_open_zip(zip_var)).pack(side="left")
 
         row2 = ttk.Frame(frame)
-        row2.pack(fill="x", pady=1)
+        row2.pack(fill="x", pady=3)
         ttk.Label(row2, text="目标路径:", width=10).pack(side="left")
         target_var = tk.StringVar(value=target)
-        ttk.Entry(row2, textvariable=target_var).pack(side="left", fill="x", expand=True, padx=2)
+        target_entry = ttk.Entry(row2, textvariable=target_var)
+        target_entry.pack(side="left", fill="x", expand=True, padx=2)
         ttk.Button(row2, text="浏览", width=6,
                    command=lambda: self._browse_dir(target_var)).pack(side="left")
 
         row3 = ttk.Frame(frame)
-        row3.pack(fill="x", pady=1)
+        row3.pack(fill="x", pady=3)
         ttk.Button(row3, text="执行导入",
                    command=lambda: self._execute_rule(zip_var, target_var)).pack(side="left")
         ttk.Button(row3, text="删除", width=6,
                    command=lambda: self._remove_rule(frame, widget_data)).pack(side="right")
+        ttk.Button(row3, text="↓", width=3,
+                   command=lambda: self._move_rule(widget_data, 1)).pack(side="right", padx=2)
+        ttk.Button(row3, text="↑", width=3,
+                   command=lambda: self._move_rule(widget_data, -1)).pack(side="right", padx=2)
 
-        widget_data = {"frame": frame, "zip_path": zip_var, "target": target_var}
+        widget_data = {"frame": frame, "zip_path": zip_var, "target": target_var,
+                       "zip_entry": zip_entry, "target_entry": target_entry}
         self.import_widgets.append(widget_data)
 
+        zip_var.trace_add("write", lambda *_: self._check_path(zip_var, zip_entry))
         zip_var.trace_add("write", lambda *_: self._save())
+        target_var.trace_add("write", lambda *_: self._check_path(target_var, target_entry))
         target_var.trace_add("write", lambda *_: self._save())
+        self._check_path(zip_var, zip_entry)
+        self._check_path(target_var, target_entry)
         self._save()
+
+    def _check_path(self, var, entry):
+        p = var.get().strip()
+        entry.configure(foreground="red" if p and not os.path.exists(p) else "")
 
     def _remove_rule(self, frame, widget_data):
         if not messagebox.askyesno("确认", "确定删除此导入规则？"):
@@ -71,7 +92,26 @@ class TabImport(ttk.Frame):
         self.import_widgets.remove(widget_data)
         for i, w in enumerate(self.import_widgets):
             w["frame"].configure(text=f"导入规则 {i + 1}")
+        if not self.import_widgets:
+            self._empty_label.pack(pady=30)
         self._save()
+
+    def _move_rule(self, widget_data, direction):
+        idx = self.import_widgets.index(widget_data)
+        new_idx = idx + direction
+        if new_idx < 0 or new_idx >= len(self.import_widgets):
+            return
+        self.import_widgets[idx], self.import_widgets[new_idx] = \
+            self.import_widgets[new_idx], self.import_widgets[idx]
+        self._rebuild_order()
+        self._save()
+
+    def _rebuild_order(self):
+        for w in self.import_widgets:
+            w["frame"].pack_forget()
+        for i, w in enumerate(self.import_widgets):
+            w["frame"].pack(fill="x", padx=5, pady=4)
+            w["frame"].configure(text=f"导入规则 {i + 1}")
 
     def _browse_dir(self, var):
         path = filedialog.askdirectory()
