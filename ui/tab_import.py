@@ -73,17 +73,23 @@ class TabImport(ttk.Frame):
                        "zip_entry": zip_entry, "target_entry": target_entry}
         self.import_widgets.append(widget_data)
 
-        zip_var.trace_add("write", lambda *_: self._check_path(zip_var, zip_entry))
+        pkg = get_packages_dir()
+        zip_var.trace_add("write", lambda *_: self._check_path(zip_var, zip_entry, pkg))
         zip_var.trace_add("write", lambda *_: self._save())
         target_var.trace_add("write", lambda *_: self._check_path(target_var, target_entry))
         target_var.trace_add("write", lambda *_: self._save())
-        self._check_path(zip_var, zip_entry)
+        self._check_path(zip_var, zip_entry, pkg)
         self._check_path(target_var, target_entry)
         self._save()
 
-    def _check_path(self, var, entry):
+    def _check_path(self, var, entry, base_dir=None):
         p = var.get().strip()
-        entry.configure(foreground="red" if p and not os.path.exists(p) else "")
+        if not p:
+            entry.configure(foreground="")
+            return
+        if base_dir and not os.path.isabs(p):
+            p = os.path.join(base_dir, p)
+        entry.configure(foreground="red" if not os.path.exists(p) else "")
 
     def _remove_rule(self, frame, widget_data):
         if not messagebox.askyesno("确认", "确定删除此导入规则？"):

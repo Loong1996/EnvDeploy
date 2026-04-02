@@ -75,17 +75,23 @@ class TabPack(ttk.Frame):
                        "source_entry": source_entry, "output_entry": output_entry}
         self.export_widgets.append(widget_data)
 
+        pkg = get_packages_dir()
         source_var.trace_add("write", lambda *_: self._check_path(source_var, source_entry))
         source_var.trace_add("write", lambda *_: self._save())
-        output_var.trace_add("write", lambda *_: self._check_path(output_var, output_entry))
+        output_var.trace_add("write", lambda *_: self._check_path(output_var, output_entry, pkg))
         output_var.trace_add("write", lambda *_: self._save())
         self._check_path(source_var, source_entry)
-        self._check_path(output_var, output_entry)
+        self._check_path(output_var, output_entry, pkg)
         self._save()
 
-    def _check_path(self, var, entry):
+    def _check_path(self, var, entry, base_dir=None):
         p = var.get().strip()
-        entry.configure(foreground="red" if p and not os.path.exists(p) else "")
+        if not p:
+            entry.configure(foreground="")
+            return
+        if base_dir and not os.path.isabs(p):
+            p = os.path.join(base_dir, p)
+        entry.configure(foreground="red" if not os.path.exists(p) else "")
 
     def _remove_rule(self, frame, widget_data):
         if not messagebox.askyesno("确认", "确定删除此打包规则？"):
