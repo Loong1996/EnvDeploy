@@ -9,6 +9,7 @@ DEFAULT_CONFIG = {
     "import_rules": [],
     "json_rules": [],
     "env_rules": [],
+    "sync_profiles": [],
 }
 
 

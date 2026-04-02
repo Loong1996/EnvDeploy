@@ -6,12 +6,14 @@ from ui.tab_pack import TabPack
 from ui.tab_import import TabImport
 from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
+from ui.tab_sync import TabSync
 from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog
 import os
 import glob
 from core.folder_pack import export_folder, import_folder, PACKAGES_DIR, get_packages_dir
 from core.json_manip import execute_json_rule
 from core.env_vars import execute_env_rule
+from core.file_sync import sync_files
 
 
 class App:
@@ -35,6 +37,9 @@ class App:
         btn_import = tk.Button(global_bar, text="  一键导入  ", bg="#2196F3", fg="white",
                                font=("", 11, "bold"), command=self._one_key_import)
         btn_import.pack(side="left", padx=10, ipady=4)
+        btn_sync = tk.Button(global_bar, text="  一键同步  ", bg="#9C27B0", fg="white",
+                             font=("", 11, "bold"), command=self._one_key_sync)
+        btn_sync.pack(side="left", padx=10, ipady=4)
         ttk.Separator(self.root, orient="horizontal").pack(fill="x", padx=5)
 
         notebook = ttk.Notebook(self.root)
@@ -44,11 +49,13 @@ class App:
         self.tab_import = TabImport(notebook, self.config, self._save)
         self.tab_json = TabJson(notebook, self.config, self._save)
         self.tab_envvar = TabEnvVar(notebook, self.config, self._save)
+        self.tab_sync = TabSync(notebook, self.config, self._save)
 
         notebook.add(self.tab_pack, text="  打包文件  ")
         notebook.add(self.tab_import, text="  导入文件  ")
         notebook.add(self.tab_json, text="  JSON操作  ")
         notebook.add(self.tab_envvar, text="  环境变量  ")
+        notebook.add(self.tab_sync, text="  批量同步  ")
 
     def _save(self):
         save_config(self.config)
@@ -163,5 +170,45 @@ class App:
 
             self.root.after(0, lambda: dlg.done())
             self.root.after(0, lambda r=results: ResultDialog(self.root, "一键导入结果", r).show())
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _one_key_sync(self):
+        # 取当前批量同步 Tab 中选中的方案
+        profile = self.tab_sync._current_profile()
+        if profile is None:
+            messagebox.showinfo("提示", "请先在「批量同步」Tab 中创建并配置同步方案")
+            return
+
+        items = [it for it in profile.get("items", []) if it.get("source", "").strip()]
+        all_targets = profile.get("targets", [])
+        target_paths = [t.get("path", "") for t in all_targets if t.get("path", "").strip()]
+
+        if not items:
+            messagebox.showinfo("提示", "当前方案没有同步项")
+            return
+        if not target_paths:
+            messagebox.showinfo("提示", "当前方案没有目标工程目录")
+            return
+
+        memory = self.config.get("selection_memory", {}).get("sync", {})
+        sel_dlg = SelectionDialog(self.root, "选择要同步的目标工程", target_paths, memory=memory)
+        selected = sel_dlg.show()
+        if sel_dlg.memory_result is not None:
+            self.config.setdefault("selection_memory", {})["sync"] = sel_dlg.memory_result
+            self._save()
+        if not selected:
+            return
+
+        chosen_targets = [target_paths[i] for i in selected]
+        dlg = ProgressDialog(self.root, "一键同步中...")
+
+        def worker():
+            def on_progress(current, total, detail):
+                self.root.after(0, lambda: dlg.update_progress(current, total, detail))
+
+            results = sync_files(items, chosen_targets, progress_callback=on_progress)
+            self.root.after(0, lambda: dlg.done())
+            self.root.after(0, lambda r=results: ResultDialog(self.root, "一键同步结果", r).show())
 
         threading.Thread(target=worker, daemon=True).start()
