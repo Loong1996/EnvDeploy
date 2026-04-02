@@ -75,3 +75,77 @@ class ProgressDialog(tk.Toplevel):
     def done(self):
         self.grab_release()
         self.destroy()
+
+
+class SelectionDialog(tk.Toplevel):
+    """显示可勾选的规则列表，返回用户选中的索引列表。"""
+
+    def __init__(self, parent, title, items, memory=None):
+        """
+        items: list of str
+        memory: dict — {item_text: bool}，记忆上次的勾选状态
+        """
+        super().__init__(parent)
+        self.title(title)
+        self.resizable(True, True)
+        self.transient(parent)
+        self.grab_set()
+        self.result = None
+        self.memory_result = None
+        self._vars = []
+        self._items = items
+        self._memory = memory or {}
+
+        # 标题 + 全选按钮
+        top = tk.Frame(self)
+        top.pack(fill="x", padx=10, pady=(10, 5))
+        tk.Label(top, text="请选择要执行的规则：").pack(side="left")
+        tk.Button(top, text="全不选", width=7, command=self._deselect_all).pack(side="right", padx=(4, 0))
+        tk.Button(top, text="全选", width=6, command=self._select_all).pack(side="right")
+
+        # Checkbutton 列表区域
+        list_frame = tk.Frame(self, relief="sunken", bd=1)
+        list_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        for i, text in enumerate(items):
+            checked = self._memory.get(text, True)
+            var = tk.BooleanVar(value=checked)
+            cb = tk.Checkbutton(list_frame, text=f" {i+1}. {text}", variable=var,
+                                anchor="w", padx=8, pady=3)
+            cb.pack(fill="x")
+            self._vars.append(var)
+
+        # 确定/取消
+        btn_row = tk.Frame(self)
+        btn_row.pack(fill="x", padx=10, pady=(0, 10))
+        tk.Button(btn_row, text="确定", width=8, command=self._ok).pack(side="right", padx=(4, 0))
+        tk.Button(btn_row, text="取消", width=8, command=self._cancel).pack(side="right")
+
+        row_h = 30
+        list_h = min(len(items), 12) * row_h
+        self.geometry(f"520x{list_h + 110}")
+        self.minsize(400, 180)
+        self.protocol("WM_DELETE_WINDOW", self._cancel)
+
+    def _select_all(self):
+        for v in self._vars:
+            v.set(True)
+
+    def _deselect_all(self):
+        for v in self._vars:
+            v.set(False)
+
+    def _ok(self):
+        self.result = [i for i, v in enumerate(self._vars) if v.get()]
+        self.memory_result = {text: self._vars[i].get() for i, text in enumerate(self._items)}
+        self.grab_release()
+        self.destroy()
+
+    def _cancel(self):
+        self.result = None
+        self.grab_release()
+        self.destroy()
+
+    def show(self):
+        self.wait_window()
+        return self.result

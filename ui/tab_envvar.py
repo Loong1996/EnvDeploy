@@ -28,38 +28,61 @@ class TabEnvVar(ttk.Frame):
         self.status_var = tk.StringVar(value="就绪")
         ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").pack(fill="x", padx=5, pady=(0, 5))
 
+        self._loading = True
         for rule in self.config.get("env_rules", []):
-            self._add_rule(rule.get("name", ""), rule.get("value", ""))
+            self._add_rule(rule.get("name", ""), rule.get("value", ""), rule.get("operation", "set"))
+        self._loading = False
 
-    def _add_rule(self, name="", value=""):
+    OPERATIONS = [("set", "设置变量"), ("append_path", "追加到PATH")]
+
+    def _add_rule(self, name="", value="", operation="set"):
         idx = len(self.rule_widgets)
         frame = ttk.LabelFrame(self.scroll.inner, text=f"规则 {idx + 1}", padding=5)
         frame.pack(fill="x", padx=5, pady=2)
 
         row1 = ttk.Frame(frame)
         row1.pack(fill="x", pady=1)
-        ttk.Label(row1, text="变量名:", width=10).pack(side="left")
-        name_var = tk.StringVar(value=name)
-        ttk.Entry(row1, textvariable=name_var).pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Label(row1, text="操作:", width=10).pack(side="left")
+        op_var = tk.StringVar(value=operation)
+        op_combo = ttk.Combobox(row1, textvariable=op_var, state="readonly", width=15,
+                                values=[k for k, _ in self.OPERATIONS])
+        op_combo.pack(side="left", padx=2)
+        # 显示中文标签
+        op_label_var = tk.StringVar()
+        op_label = ttk.Label(row1, textvariable=op_label_var, foreground="gray")
+        op_label.pack(side="left", padx=4)
+
+        def _update_op_label(*_):
+            op_map = dict(self.OPERATIONS)
+            op_label_var.set(op_map.get(op_var.get(), ""))
+        _update_op_label()
+        op_var.trace_add("write", _update_op_label)
 
         row2 = ttk.Frame(frame)
         row2.pack(fill="x", pady=1)
-        ttk.Label(row2, text="变量值:", width=10).pack(side="left")
-        value_var = tk.StringVar(value=value)
-        ttk.Entry(row2, textvariable=value_var).pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Label(row2, text="变量名:", width=10).pack(side="left")
+        name_var = tk.StringVar(value=name)
+        ttk.Entry(row2, textvariable=name_var).pack(side="left", fill="x", expand=True, padx=2)
 
         row3 = ttk.Frame(frame)
         row3.pack(fill="x", pady=1)
-        ttk.Button(row3, text="执行此规则",
-                   command=lambda: self._execute_rule(name_var, value_var)).pack(side="left")
-        ttk.Button(row3, text="删除", width=6,
+        ttk.Label(row3, text="变量值:", width=10).pack(side="left")
+        value_var = tk.StringVar(value=value)
+        ttk.Entry(row3, textvariable=value_var).pack(side="left", fill="x", expand=True, padx=2)
+
+        row4 = ttk.Frame(frame)
+        row4.pack(fill="x", pady=1)
+        ttk.Button(row4, text="执行此规则",
+                   command=lambda: self._execute_rule(name_var, value_var, op_var)).pack(side="left")
+        ttk.Button(row4, text="删除", width=6,
                    command=lambda: self._remove_rule(frame, widget_data)).pack(side="right")
 
-        widget_data = {"frame": frame, "name": name_var, "value": value_var}
+        widget_data = {"frame": frame, "name": name_var, "value": value_var, "operation": op_var}
         self.rule_widgets.append(widget_data)
 
         name_var.trace_add("write", lambda *_: self._save())
         value_var.trace_add("write", lambda *_: self._save())
+        op_var.trace_add("write", lambda *_: self._save())
         self._save()
 
     def _remove_rule(self, frame, widget_data):
@@ -71,13 +94,14 @@ class TabEnvVar(ttk.Frame):
             w["frame"].configure(text=f"规则 {i + 1}")
         self._save()
 
-    def _execute_rule(self, name_var, value_var):
+    def _execute_rule(self, name_var, value_var, op_var):
         name = name_var.get().strip()
         value = value_var.get().strip()
+        operation = op_var.get()
         if not name:
             messagebox.showerror("错误", "请填写变量名")
             return
-        self._run_in_thread(execute_env_rule, name, value)
+        self._run_in_thread(execute_env_rule, name, value, operation)
 
     def _execute_all(self):
         if not self.rule_widgets:
@@ -90,7 +114,7 @@ class TabEnvVar(ttk.Frame):
             results = []
             for i, w in enumerate(self.rule_widgets):
                 try:
-                    msg = execute_env_rule(w["name"].get(), w["value"].get())
+                    msg = execute_env_rule(w["name"].get(), w["value"].get(), w["operation"].get())
                     results.append(f"规则{i+1}: {msg}")
                 except Exception as e:
                     results.append(f"规则{i+1}: 失败 - {e}")
@@ -116,8 +140,10 @@ class TabEnvVar(ttk.Frame):
         threading.Thread(target=worker, daemon=True).start()
 
     def _save(self):
+        if getattr(self, '_loading', False):
+            return
         self.config["env_rules"] = [
-            {"name": w["name"].get(), "value": w["value"].get()}
+            {"name": w["name"].get(), "value": w["value"].get(), "operation": w["operation"].get()}
             for w in self.rule_widgets
         ]
         self.save_callback()

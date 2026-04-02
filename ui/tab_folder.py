@@ -42,11 +42,13 @@ class TabFolder(ttk.Frame):
         self.status_var = tk.StringVar(value="就绪")
         ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").pack(fill="x", padx=5, pady=(0, 5))
 
-        # 加载已有配置
+        # 加载已有配置（初始化期间跳过自动保存，防止先加载的规则覆盖后加载的）
+        self._loading = True
         for rule in self.config.get("export_rules", []):
             self._add_export_rule(rule.get("source", ""), rule.get("output", ""))
         for rule in self.config.get("import_rules", []):
             self._add_import_rule(rule.get("zip_path", ""), rule.get("target", ""))
+        self._loading = False
 
     def _add_export_rule(self, source="", output=""):
         idx = len(self.export_widgets)
@@ -274,6 +276,8 @@ class TabFolder(ttk.Frame):
         threading.Thread(target=worker, daemon=True).start()
 
     def _save(self):
+        if getattr(self, '_loading', False):
+            return
         self.config["export_rules"] = [
             {"source": w["source"].get(), "output": w["output"].get()}
             for w in self.export_widgets

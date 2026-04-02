@@ -5,8 +5,10 @@ from config import load_config, save_config
 from ui.tab_folder import TabFolder
 from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
-from ui.widgets import ProgressDialog
-from core.folder_pack import export_folder, import_folder
+from ui.widgets import ProgressDialog, SelectionDialog
+import os
+import glob
+from core.folder_pack import export_folder, import_folder, PACKAGES_DIR, get_packages_dir
 from core.json_manip import execute_json_rule
 from core.env_vars import execute_env_rule
 
@@ -49,15 +51,24 @@ class App:
         save_config(self.config)
 
     def _one_key_pack(self):
-        export_rules = self.config.get("export_rules", [])
-        if not export_rules:
+        all_rules = self.config.get("export_rules", [])
+        if not all_rules:
             messagebox.showinfo("提示", "没有打包规则")
             return
-        if not messagebox.askokcancel("一键打包", f"将执行 {len(export_rules)} 条打包规则，是否继续？"):
+
+        items = [f"{r.get('source', '(空)')}  ->  {r.get('output', '(空)')}" for r in all_rules]
+        memory = self.config.get("selection_memory", {}).get("pack", {})
+        sel_dlg = SelectionDialog(self.root, "选择要打包的规则", items, memory=memory)
+        selected = sel_dlg.show()
+        if sel_dlg.memory_result is not None:
+            self.config.setdefault("selection_memory", {})["pack"] = sel_dlg.memory_result
+            self._save()
+        if not selected:
             return
 
-        dlg = ProgressDialog(self.root, "一键打包中...")
+        export_rules = [all_rules[i] for i in selected]
         total_rules = len(export_rules)
+        dlg = ProgressDialog(self.root, "一键打包中...")
 
         def worker():
             results = []
@@ -78,65 +89,75 @@ class App:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _build_import_entries(self):
+        """构建导入条目：仅已配置的导入规则"""
+        items = []
+        item_meta = []  # (type, rule)
+
+        for r in self.config.get("import_rules", []):
+            items.append(f"[导入] {r.get('zip_path','(空)')}  ->  {r.get('target','(空)')}")
+            item_meta.append(("import", r))
+
+        return items, item_meta
+
     def _one_key_import(self):
-        import_rules = self.config.get("import_rules", [])
-        json_rules = self.config.get("json_rules", [])
-        env_rules = self.config.get("env_rules", [])
-        total_steps = len(import_rules) + len(json_rules) + len(env_rules)
-        if total_steps == 0:
+        import_items, import_meta = self._build_import_entries()
+        all_json = self.config.get("json_rules", [])
+        all_env = self.config.get("env_rules", [])
+
+        items = list(import_items)
+        item_meta = list(import_meta)
+
+        for r in all_json:
+            items.append(f"[JSON] {r.get('filepath','(空)')}  ({r.get('operation','')})")
+            item_meta.append(("json", r))
+        for r in all_env:
+            op_label = "追加PATH" if r.get("operation") == "append_path" else "设置"
+            items.append(f"[环境变量/{op_label}] {r.get('name','(空)')} = {r.get('value','')}")
+            item_meta.append(("env", r))
+
+        if not items:
             messagebox.showinfo("提示", "没有任何导入/JSON/环境变量规则")
             return
 
-        detail = []
-        if import_rules:
-            detail.append(f"  - 导入规则: {len(import_rules)} 条")
-        if json_rules:
-            detail.append(f"  - JSON规则: {len(json_rules)} 条")
-        if env_rules:
-            detail.append(f"  - 环境变量规则: {len(env_rules)} 条")
-        msg = f"将执行以下规则:\n" + "\n".join(detail) + "\n\n是否继续？"
-        if not messagebox.askokcancel("一键导入", msg):
+        memory = self.config.get("selection_memory", {}).get("import", {})
+        sel_dlg = SelectionDialog(self.root, "选择要导入的规则", items, memory=memory)
+        selected = sel_dlg.show()
+        if sel_dlg.memory_result is not None:
+            self.config.setdefault("selection_memory", {})["import"] = sel_dlg.memory_result
+            self._save()
+        if not selected:
             return
 
+        chosen = [item_meta[i] for i in selected]
+        total_steps = len(chosen)
         dlg = ProgressDialog(self.root, "一键导入中...")
 
         def worker():
             results = []
-            step = 0
-
-            for i, rule in enumerate(import_rules):
-                def on_progress(current, total, detail):
-                    label = f"[{step+1}/{total_steps}] 导入规则{i+1} - {current}/{total}"
-                    self.root.after(0, lambda l=label, c=current, t=total, d=detail:
+            for step, (rtype, rule) in enumerate(chosen):
+                def on_file_progress(current, total, detail, s=step):
+                    label = f"[{s+1}/{total_steps}] {current}/{total}"
+                    self.root.after(0, lambda c=current, t=total, l=label, d=detail:
                                     dlg.update_progress(c, t, f"{l}  {d}"))
-                try:
-                    msg = import_folder(rule.get("zip_path", ""), rule.get("target", ""),
-                                        progress_callback=on_progress)
-                    results.append(f"导入规则{i+1}: {msg}")
-                except Exception as e:
-                    results.append(f"导入规则{i+1}: 失败 - {e}")
-                step += 1
 
-            for i, rule in enumerate(json_rules):
-                self.root.after(0, lambda s=step: dlg.update_progress(
-                    s + 1, total_steps, f"JSON规则{i+1}: {rule.get('filepath', '')}"))
+                self.root.after(0, lambda s=step, r=rule, t=rtype:
+                                dlg.update_progress(s, total_steps,
+                                    r.get("zip_path" if t == "import" else
+                                          "filepath" if t == "json" else "name", "")))
                 try:
-                    data = rule.get("data", {})
-                    msg = execute_json_rule(rule.get("filepath", ""), rule.get("operation", ""), data)
-                    results.append(f"JSON规则{i+1}: {msg}")
+                    if rtype == "import":
+                        msg = import_folder(rule.get("zip_path", ""), rule.get("target", ""),
+                                            progress_callback=on_file_progress)
+                    elif rtype == "json":
+                        msg = execute_json_rule(rule.get("filepath", ""),
+                                                rule.get("operation", ""), rule.get("data", {}))
+                    else:
+                        msg = execute_env_rule(rule.get("name", ""), rule.get("value", ""),
+                                                rule.get("operation", "set"))
+                    results.append(f"✓ {msg}")
                 except Exception as e:
-                    results.append(f"JSON规则{i+1}: 失败 - {e}")
-                step += 1
-
-            for i, rule in enumerate(env_rules):
-                self.root.after(0, lambda s=step: dlg.update_progress(
-                    s + 1, total_steps, f"环境变量规则{i+1}: {rule.get('name', '')}"))
-                try:
-                    msg = execute_env_rule(rule.get("name", ""), rule.get("value", ""))
-                    results.append(f"环境变量规则{i+1}: {msg}")
-                except Exception as e:
-                    results.append(f"环境变量规则{i+1}: 失败 - {e}")
-                step += 1
+                    results.append(f"✗ 失败 - {e}")
 
             summary = "\n".join(results)
             self.root.after(0, lambda: dlg.done())
