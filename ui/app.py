@@ -28,34 +28,50 @@ class App:
 
         self.config = load_config()
 
-        # 顶部全局操作栏
-        global_bar = ttk.Frame(self.root)
-        global_bar.pack(fill="x", padx=5, pady=5)
-        btn_pack = tk.Button(global_bar, text="  一键打包  ", bg="#4CAF50", fg="white",
+        # 顶层 Notebook — 两套功能完全隔离
+        top_notebook = ttk.Notebook(self.root)
+        top_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # === 页面1: 部署配置 ===
+        deploy_page = ttk.Frame(top_notebook)
+        top_notebook.add(deploy_page, text="  部署配置  ")
+
+        deploy_bar = ttk.Frame(deploy_page)
+        deploy_bar.pack(fill="x", padx=5, pady=5)
+        btn_pack = tk.Button(deploy_bar, text="  一键打包  ", bg="#4CAF50", fg="white",
                              font=("", 11, "bold"), command=self._one_key_pack)
         btn_pack.pack(side="left", padx=10, ipady=4)
-        btn_import = tk.Button(global_bar, text="  一键导入  ", bg="#2196F3", fg="white",
+        btn_import = tk.Button(deploy_bar, text="  一键导入  ", bg="#2196F3", fg="white",
                                font=("", 11, "bold"), command=self._one_key_import)
         btn_import.pack(side="left", padx=10, ipady=4)
-        btn_sync = tk.Button(global_bar, text="  一键同步  ", bg="#9C27B0", fg="white",
+        ttk.Separator(deploy_page, orient="horizontal").pack(fill="x", padx=5)
+
+        deploy_notebook = ttk.Notebook(deploy_page)
+        deploy_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.tab_pack = TabPack(deploy_notebook, self.config, self._save)
+        self.tab_import = TabImport(deploy_notebook, self.config, self._save)
+        self.tab_json = TabJson(deploy_notebook, self.config, self._save)
+        self.tab_envvar = TabEnvVar(deploy_notebook, self.config, self._save)
+
+        deploy_notebook.add(self.tab_pack, text="  打包文件  ")
+        deploy_notebook.add(self.tab_import, text="  导入文件  ")
+        deploy_notebook.add(self.tab_json, text="  JSON操作  ")
+        deploy_notebook.add(self.tab_envvar, text="  环境变量  ")
+
+        # === 页面2: 批量同步 ===
+        sync_page = ttk.Frame(top_notebook)
+        top_notebook.add(sync_page, text="  批量同步  ")
+
+        sync_bar = ttk.Frame(sync_page)
+        sync_bar.pack(fill="x", padx=5, pady=5)
+        btn_sync = tk.Button(sync_bar, text="  一键同步  ", bg="#9C27B0", fg="white",
                              font=("", 11, "bold"), command=self._one_key_sync)
         btn_sync.pack(side="left", padx=10, ipady=4)
-        ttk.Separator(self.root, orient="horizontal").pack(fill="x", padx=5)
+        ttk.Separator(sync_page, orient="horizontal").pack(fill="x", padx=5)
 
-        notebook = ttk.Notebook(self.root)
-        notebook.pack(fill="both", expand=True, padx=5, pady=5)
-
-        self.tab_pack = TabPack(notebook, self.config, self._save)
-        self.tab_import = TabImport(notebook, self.config, self._save)
-        self.tab_json = TabJson(notebook, self.config, self._save)
-        self.tab_envvar = TabEnvVar(notebook, self.config, self._save)
-        self.tab_sync = TabSync(notebook, self.config, self._save)
-
-        notebook.add(self.tab_pack, text="  打包文件  ")
-        notebook.add(self.tab_import, text="  导入文件  ")
-        notebook.add(self.tab_json, text="  JSON操作  ")
-        notebook.add(self.tab_envvar, text="  环境变量  ")
-        notebook.add(self.tab_sync, text="  批量同步  ")
+        self.tab_sync = TabSync(sync_page, self.config, self._save)
+        self.tab_sync.pack(fill="both", expand=True, padx=5, pady=5)
 
     def _save(self):
         save_config(self.config)
