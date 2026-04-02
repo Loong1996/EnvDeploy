@@ -27,6 +27,7 @@ class App:
         style.theme_use("clam")
 
         self.config = load_config()
+        self._ui_ready = False
 
         # 顶层 Notebook — 两套功能完全隔离
         self._top_notebook = ttk.Notebook(self.root)
@@ -88,6 +89,8 @@ class App:
         save_config(self.config)
 
     def _save_ui_state(self):
+        if not self._ui_ready:
+            return
         ui = self.config.setdefault("ui_state", {})
         ui["top_tab"] = self._top_notebook.index("current")
         ui["deploy_tab"] = self._deploy_notebook.index("current")
@@ -105,6 +108,7 @@ class App:
             self._deploy_notebook.select(deploy)
         except Exception:
             pass
+        self._ui_ready = True
 
     def _one_key_pack(self):
         all_rules = self.config.get("export_rules", [])
