@@ -50,6 +50,17 @@ def execute_json_rule(filepath, operation, data):
         existing.update(data)
         msg = f"已修改 {len(data)} 个key在 {filepath}"
 
+    elif operation == "upsert":
+        added = [k for k in data if k not in existing]
+        modified = [k for k in data if k in existing]
+        existing.update(data)
+        parts = []
+        if added:
+            parts.append(f"新增 {len(added)} 个key")
+        if modified:
+            parts.append(f"修改 {len(modified)} 个key")
+        msg = f"已{'、'.join(parts)}在 {filepath}"
+
     else:
         raise ValueError(f"未知操作: {operation}")
 

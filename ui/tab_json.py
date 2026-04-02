@@ -51,7 +51,8 @@ class TabJson(ttk.Frame):
         row2.pack(fill="x", pady=1)
         ttk.Label(row2, text="操作类型:", width=10).pack(side="left")
         op_var = tk.StringVar(value=operation)
-        op_combo = ttk.Combobox(row2, textvariable=op_var, values=["append", "modify", "overwrite"],
+        op_combo = ttk.Combobox(row2, textvariable=op_var,
+                                values=["append", "modify", "upsert", "overwrite"],
                                 state="readonly", width=15)
         op_combo.pack(side="left")
 
