@@ -2,6 +2,23 @@ import tkinter as tk
 from tkinter import ttk
 
 
+def center_window(win, parent=None):
+    """将 Toplevel 窗口居中到 parent（或屏幕）。"""
+    win.update_idletasks()
+    w, h = win.winfo_width(), win.winfo_height()
+    if parent:
+        px = parent.winfo_rootx()
+        py = parent.winfo_rooty()
+        pw = parent.winfo_width()
+        ph = parent.winfo_height()
+        x = px + (pw - w) // 2
+        y = py + (ph - h) // 2
+    else:
+        x = (win.winfo_screenwidth() - w) // 2
+        y = (win.winfo_screenheight() - h) // 2
+    win.geometry(f"+{x}+{y}")
+
+
 class ScrollableFrame(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -61,6 +78,9 @@ class ProgressDialog(tk.Toplevel):
 
         self.detail_var = tk.StringVar(value="")
         ttk.Label(frame, textvariable=self.detail_var, foreground="gray").pack(fill="x")
+
+        center_window(self, parent)
+        self.focus_force()
 
     def update_progress(self, current, total, detail=""):
         pct = int(current / total * 100) if total > 0 else 0
@@ -130,6 +150,9 @@ class SelectionDialog(tk.Toplevel):
         self.geometry(f"520x{list_h + 110}")
         self.minsize(400, 180)
         self.protocol("WM_DELETE_WINDOW", self._cancel)
+        self.bind("<Escape>", lambda e: self._cancel())
+        center_window(self, parent)
+        self.focus_force()
 
     def _select_all(self):
         for v in self._vars:
@@ -196,6 +219,9 @@ class ResultDialog(tk.Toplevel):
         self.geometry(f"500x{h}")
         self.minsize(400, 150)
         self.protocol("WM_DELETE_WINDOW", self._close)
+        self.bind("<Escape>", lambda e: self._close())
+        center_window(self, parent)
+        self.focus_force()
 
     def _close(self):
         self.grab_release()
