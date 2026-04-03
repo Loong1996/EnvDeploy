@@ -7,6 +7,7 @@ from ui.tab_import import TabImport
 from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
 from ui.tab_sync import TabSync
+from ui.tab_timestamp import TabTimestamp
 from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog, LogPanel, _RestoreDialog
 from ui.theme import (
     apply_ttk_styles,
@@ -71,8 +72,9 @@ class App:
         self.root.config(menu=menubar)
 
         # ── 注册模块（新增工具在此加一行）────────────────────
-        self._register_module("deploy", "机器开发环境部署", self._build_deploy_page)
-        self._register_module("sync",   "项目配置同步",     self._build_sync_page)
+        self._register_module("deploy",    "机器开发环境部署", self._build_deploy_page)
+        self._register_module("sync",      "项目配置同步",     self._build_sync_page)
+        self._register_module("timestamp", "时间戳转换",       self._build_timestamp_page)
 
         # 绑定 top tab 切换事件
         self._top_notebook.bind("<<NotebookTabChanged>>", lambda _: self._save_ui_state())
@@ -159,6 +161,10 @@ class App:
         self._deploy_tabs[0][1].pack(fill="both", expand=True)
         self._sidebar_btns[0].configure(bg=COLOR_SIDEBAR_ACTIVE, font=FONT_BODY_BOLD,
                                         fg=FG_SIDEBAR_SEL)
+
+    def _build_timestamp_page(self, page):
+        tab = TabTimestamp(page)
+        tab.pack(fill="both", expand=True, padx=PAD_OUTER, pady=PAD_OUTER)
 
     def _build_sync_page(self, page):
         sync_bar = ttk.Frame(page)
