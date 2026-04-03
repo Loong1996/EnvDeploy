@@ -1,5 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
+from ui.theme import (
+    FONT_MONO_SM, FONT_MONO_MD,
+    COLOR_FG_SUCCESS, COLOR_FG_ERROR, COLOR_FG_MUTED, COLOR_FG_BODY,
+    BTN_DIALOG_OK, BTN_DIALOG_CANCEL, BTN_DIALOG_DANGER,
+    RELIEF_LIST, RELIEF_LIST_BD,
+)
 
 
 def center_window(win, parent=None):
@@ -77,7 +83,7 @@ class ProgressDialog(tk.Toplevel):
         self.progress.pack(fill="x", pady=(8, 4))
 
         self.detail_var = tk.StringVar(value="")
-        ttk.Label(frame, textvariable=self.detail_var, foreground="gray").pack(fill="x")
+        ttk.Label(frame, textvariable=self.detail_var, foreground=COLOR_FG_MUTED).pack(fill="x")
 
         center_window(self, parent)
         self.focus_force()
@@ -124,7 +130,7 @@ class SelectionDialog(tk.Toplevel):
         tk.Button(top, text="全选", width=6, command=self._select_all).pack(side="right")
 
         # Checkbutton 列表区域
-        list_frame = tk.Frame(self, relief="sunken", bd=1)
+        list_frame = tk.Frame(self, relief=RELIEF_LIST, bd=RELIEF_LIST_BD)
         list_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         for i, text in enumerate(items):
@@ -139,11 +145,9 @@ class SelectionDialog(tk.Toplevel):
         btn_row = tk.Frame(self)
         btn_row.pack(fill="x", padx=10, pady=(0, 10))
         tk.Button(btn_row, text="确定", width=8, command=self._ok,
-                  bg="#4CAF50", fg="white", activebackground="#388E3C", activeforeground="white"
-                  ).pack(side="right", padx=(4, 0))
+                  **BTN_DIALOG_OK).pack(side="right", padx=(4, 0))
         tk.Button(btn_row, text="取消", width=8, command=self._cancel,
-                  bg="#9E9E9E", fg="white", activebackground="#757575", activeforeground="white"
-                  ).pack(side="right")
+                  **BTN_DIALOG_CANCEL).pack(side="right")
 
         row_h = 30
         list_h = min(len(items), 12) * row_h
@@ -193,14 +197,14 @@ class LogPanel(ttk.Frame):
 
         self._body = ttk.Frame(self)
         self._text = tk.Text(self._body, height=7, state="disabled",
-                             font=("Consolas", 9), wrap="word")
+                             font=FONT_MONO_SM, wrap="word")
         sb = ttk.Scrollbar(self._body, orient="vertical", command=self._text.yview)
         self._text.configure(yscrollcommand=sb.set)
         self._text.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
-        self._text.tag_configure("ok",  foreground="#2E7D32")
-        self._text.tag_configure("err", foreground="#C62828")
-        self._text.tag_configure("ts",  foreground="#9E9E9E")
+        self._text.tag_configure("ok",  foreground=COLOR_FG_SUCCESS)
+        self._text.tag_configure("err", foreground=COLOR_FG_ERROR)
+        self._text.tag_configure("ts",  foreground=COLOR_FG_MUTED)
 
         self._visible = False
 
@@ -242,10 +246,10 @@ class ResultDialog(tk.Toplevel):
         frame.pack(fill="both", expand=True)
 
         text = tk.Text(frame, wrap="word", state="normal",
-                       font=("", 10), relief="flat", bg=self.cget("bg"))
-        text.tag_configure("ok", foreground="#2E7D32")
-        text.tag_configure("err", foreground="#C62828")
-        text.tag_configure("normal", foreground="#333333")
+                       font=FONT_MONO_MD, relief="flat", bg=self.cget("bg"))
+        text.tag_configure("ok",     foreground=COLOR_FG_SUCCESS)
+        text.tag_configure("err",    foreground=COLOR_FG_ERROR)
+        text.tag_configure("normal", foreground=COLOR_FG_BODY)
 
         for line in lines:
             if line.startswith("✓"):
@@ -261,8 +265,7 @@ class ResultDialog(tk.Toplevel):
         btn_row = tk.Frame(self)
         btn_row.pack(fill="x", padx=10, pady=(0, 10))
         tk.Button(btn_row, text="关闭", width=8, command=self._close,
-                  bg="#4CAF50", fg="white", activebackground="#388E3C", activeforeground="white"
-                  ).pack(side="right")
+                  **BTN_DIALOG_OK).pack(side="right")
 
         h = min(len(lines), 15) * 22 + 80
         self.geometry(f"500x{h}")
@@ -299,12 +302,12 @@ class _RestoreDialog(tk.Toplevel):
         ttk.Label(self, text="选择要恢复的备份（最新在前）：",
                   padding=(10, 8, 10, 4)).pack(anchor="w")
 
-        frame = tk.Frame(self, relief="sunken", bd=1)
+        frame = tk.Frame(self, relief=RELIEF_LIST, bd=RELIEF_LIST_BD)
         frame.pack(fill="both", expand=True, padx=10, pady=4)
 
         sb = ttk.Scrollbar(frame, orient="vertical")
         self._listbox = tk.Listbox(frame, yscrollcommand=sb.set,
-                                   font=("Consolas", 10), selectmode="browse",
+                                   font=FONT_MONO_MD, selectmode="browse",
                                    activestyle="dotbox", height=min(len(backups), 12))
         sb.configure(command=self._listbox.yview)
         self._listbox.pack(side="left", fill="both", expand=True)
@@ -317,11 +320,9 @@ class _RestoreDialog(tk.Toplevel):
         btn_row = tk.Frame(self)
         btn_row.pack(fill="x", padx=10, pady=(4, 10))
         tk.Button(btn_row, text="恢复", width=8, command=self._ok,
-                  bg="#FF7043", fg="white",
-                  activebackground="#BF360C", activeforeground="white").pack(side="right", padx=(4, 0))
+                  **BTN_DIALOG_DANGER).pack(side="right", padx=(4, 0))
         tk.Button(btn_row, text="取消", width=8, command=self.destroy,
-                  bg="#9E9E9E", fg="white",
-                  activebackground="#757575", activeforeground="white").pack(side="right")
+                  **BTN_DIALOG_CANCEL).pack(side="right")
 
         self.geometry(f"360x{min(len(backups), 12) * 22 + 100}")
         self.protocol("WM_DELETE_WINDOW", self.destroy)

@@ -8,6 +8,13 @@ from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
 from ui.tab_sync import TabSync
 from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog, LogPanel, _RestoreDialog
+from ui.theme import (
+    apply_ttk_styles,
+    FONT_BODY, FONT_BODY_BOLD,
+    BTN_PRIMARY, BTN_SECONDARY, BTN_ACCENT,
+    COLOR_SIDEBAR_BG, COLOR_SIDEBAR_ACTIVE, COLOR_SIDEBAR_HOVER,
+    PAD_OUTER, PAD_HERO_BTN, IPADY_HERO_BTN, IPADY_SIDEBAR,
+)
 import os
 from core.folder_pack import export_folder, import_folder
 from core.json_manip import execute_json_rule
@@ -22,12 +29,7 @@ class App:
         self.root.geometry("900x620")
         self.root.minsize(700, 500)
 
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure(".", font=("Microsoft YaHei UI", 9))
-        style.configure("TLabelframe.Label", font=("Microsoft YaHei UI", 9, "bold"))
-        style.configure("TButton", padding=[8, 3])
-        style.configure("TNotebook.Tab", padding=[12, 4])
+        apply_ttk_styles(ttk.Style())
 
         self.config = load_config()
         self._ui_ready = False
@@ -37,7 +39,7 @@ class App:
 
         # 顶层 Notebook
         self._top_notebook = ttk.Notebook(self.root)
-        self._top_notebook.pack(fill="both", expand=True, padx=5, pady=5)
+        self._top_notebook.pack(fill="both", expand=True, padx=PAD_OUTER, pady=PAD_OUTER)
 
         # 模块注册表：[{"key", "label", "frame", "var"}]
         self._modules = []
@@ -110,23 +112,17 @@ class App:
 
     def _build_deploy_page(self, page):
         deploy_bar = ttk.Frame(page)
-        deploy_bar.pack(fill="x", padx=5, pady=5)
-        tk.Button(deploy_bar, text="  一键打包  ", bg="#4CAF50", fg="white",
-                  font=("Microsoft YaHei UI", 11, "bold"),
-                  relief="flat", bd=0, cursor="hand2",
-                  activebackground="#388E3C", activeforeground="white",
-                  command=self._one_key_pack).pack(side="left", padx=10, ipady=6)
-        tk.Button(deploy_bar, text="  一键导入  ", bg="#2196F3", fg="white",
-                  font=("Microsoft YaHei UI", 11, "bold"),
-                  relief="flat", bd=0, cursor="hand2",
-                  activebackground="#1565C0", activeforeground="white",
-                  command=self._one_key_import).pack(side="left", padx=10, ipady=6)
-        ttk.Separator(page, orient="horizontal").pack(fill="x", padx=5)
+        deploy_bar.pack(fill="x", padx=PAD_OUTER, pady=PAD_OUTER)
+        tk.Button(deploy_bar, text="  一键打包  ", **BTN_PRIMARY,
+                  command=self._one_key_pack).pack(side="left", padx=PAD_HERO_BTN, ipady=IPADY_HERO_BTN)
+        tk.Button(deploy_bar, text="  一键导入  ", **BTN_SECONDARY,
+                  command=self._one_key_import).pack(side="left", padx=PAD_HERO_BTN, ipady=IPADY_HERO_BTN)
+        ttk.Separator(page, orient="horizontal").pack(fill="x", padx=PAD_OUTER)
 
         deploy_body = tk.Frame(page)
         deploy_body.pack(fill="both", expand=True)
 
-        sidebar = tk.Frame(deploy_body, bg="#ECEFF1", width=90)
+        sidebar = tk.Frame(deploy_body, bg=COLOR_SIDEBAR_BG, width=90)
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
         ttk.Separator(deploy_body, orient="vertical").pack(side="left", fill="y")
@@ -150,27 +146,24 @@ class App:
 
         for i, (label, _) in enumerate(self._deploy_tabs):
             btn = tk.Button(sidebar, text=label, bd=0, relief="flat", cursor="hand2",
-                            font=("Microsoft YaHei UI", 9), anchor="w", padx=12,
-                            bg="#ECEFF1", activebackground="#CFD8DC",
+                            font=FONT_BODY, anchor="w", padx=12,
+                            bg=COLOR_SIDEBAR_BG, activebackground=COLOR_SIDEBAR_HOVER,
                             command=lambda idx=i: self._select_deploy_tab(idx))
-            btn.pack(fill="x", ipady=8)
+            btn.pack(fill="x", ipady=IPADY_SIDEBAR)
             self._sidebar_btns.append(btn)
 
         self._deploy_tabs[0][1].pack(fill="both", expand=True)
-        self._sidebar_btns[0].configure(bg="#B0BEC5", font=("Microsoft YaHei UI", 9, "bold"))
+        self._sidebar_btns[0].configure(bg=COLOR_SIDEBAR_ACTIVE, font=FONT_BODY_BOLD)
 
     def _build_sync_page(self, page):
         sync_bar = ttk.Frame(page)
-        sync_bar.pack(fill="x", padx=5, pady=5)
-        tk.Button(sync_bar, text="  一键同步  ", bg="#9C27B0", fg="white",
-                  font=("Microsoft YaHei UI", 11, "bold"),
-                  relief="flat", bd=0, cursor="hand2",
-                  activebackground="#6A1B9A", activeforeground="white",
-                  command=self._one_key_sync).pack(side="left", padx=10, ipady=6)
-        ttk.Separator(page, orient="horizontal").pack(fill="x", padx=5)
+        sync_bar.pack(fill="x", padx=PAD_OUTER, pady=PAD_OUTER)
+        tk.Button(sync_bar, text="  一键同步  ", **BTN_ACCENT,
+                  command=self._one_key_sync).pack(side="left", padx=PAD_HERO_BTN, ipady=IPADY_HERO_BTN)
+        ttk.Separator(page, orient="horizontal").pack(fill="x", padx=PAD_OUTER)
 
         self.tab_sync = TabSync(page, self.config, self._save)
-        self.tab_sync.pack(fill="both", expand=True, padx=5, pady=5)
+        self.tab_sync.pack(fill="both", expand=True, padx=PAD_OUTER, pady=PAD_OUTER)
 
     # ── UI 状态 ───────────────────────────────────────────────
 
@@ -178,12 +171,12 @@ class App:
         _, prev = self._deploy_tabs[self._deploy_tab_index]
         prev.pack_forget()
         self._sidebar_btns[self._deploy_tab_index].configure(
-            bg="#ECEFF1", font=("Microsoft YaHei UI", 9))
+            bg=COLOR_SIDEBAR_BG, font=FONT_BODY)
         self._deploy_tab_index = idx
         _, cur = self._deploy_tabs[idx]
         cur.pack(fill="both", expand=True)
         self._sidebar_btns[idx].configure(
-            bg="#B0BEC5", font=("Microsoft YaHei UI", 9, "bold"))
+            bg=COLOR_SIDEBAR_ACTIVE, font=FONT_BODY_BOLD)
         self._save_ui_state()
 
     def _toggle_log(self):

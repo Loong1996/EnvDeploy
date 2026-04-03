@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
 from ui.widgets import ScrollableFrame
+from ui.theme import COLOR_FG_INVALID, COLOR_FG_ERROR, PAD_OUTER, PAD_CARD, RELIEF_STATUS, empty_label
 from core.env_vars import execute_env_rule, check_admin
 
 
@@ -13,25 +14,23 @@ class TabEnvVar(ttk.Frame):
         self.rule_widgets = []
 
         btn_bar = ttk.Frame(self)
-        btn_bar.pack(fill="x", padx=5, pady=5)
+        btn_bar.pack(fill="x", padx=PAD_OUTER, pady=PAD_OUTER)
         ttk.Button(btn_bar, text="+ 添加规则", command=self._add_rule).pack(side="left")
         ttk.Button(btn_bar, text="全部执行", command=self._execute_all).pack(side="right")
 
         if not check_admin():
             warn = ttk.Label(self, text="(!) 未以管理员身份运行，环境变量写入将失败",
-                             foreground="red")
-            warn.pack(fill="x", padx=5)
+                             foreground=COLOR_FG_ERROR)
+            warn.pack(fill="x", padx=PAD_OUTER)
 
         self.scroll = ScrollableFrame(self)
-        self.scroll.pack(fill="both", expand=True, padx=5)
+        self.scroll.pack(fill="both", expand=True, padx=PAD_OUTER)
 
-        self._empty_label = tk.Label(self.scroll.inner,
-            text="暂无环境变量规则，点击上方「+ 添加规则」添加",
-            fg="gray", font=("Microsoft YaHei UI", 9))
+        self._empty_label = empty_label(self.scroll.inner, "暂无环境变量规则，点击上方「+ 添加规则」添加")
         self._empty_label.pack(pady=30)
 
         self.status_var = tk.StringVar(value="就绪")
-        ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").pack(fill="x", padx=5, pady=(0, 5))
+        ttk.Label(self, textvariable=self.status_var, relief=RELIEF_STATUS, anchor="w").pack(fill="x", padx=PAD_OUTER, pady=(0, PAD_OUTER))
 
         self._loading = True
         for rule in self.config.get("env_rules", []):
@@ -44,7 +43,7 @@ class TabEnvVar(ttk.Frame):
         self._empty_label.pack_forget()
         idx = len(self.rule_widgets)
         frame = ttk.LabelFrame(self.scroll.inner, text=f"规则 {idx + 1}", padding=8)
-        frame.pack(fill="x", padx=5, pady=4)
+        frame.pack(fill="x", padx=PAD_OUTER, pady=PAD_CARD)
 
         row1 = ttk.Frame(frame)
         row1.pack(fill="x", pady=3)

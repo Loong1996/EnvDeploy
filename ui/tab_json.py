@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
 from ui.widgets import ScrollableFrame
+from ui.theme import COLOR_FG_INVALID, PAD_OUTER, PAD_CARD, RELIEF_STATUS, empty_label
 from core.json_manip import execute_json_rule
 
 
@@ -15,20 +16,18 @@ class TabJson(ttk.Frame):
         self.rule_widgets = []
 
         btn_bar = ttk.Frame(self)
-        btn_bar.pack(fill="x", padx=5, pady=5)
+        btn_bar.pack(fill="x", padx=PAD_OUTER, pady=PAD_OUTER)
         ttk.Button(btn_bar, text="+ 添加规则", command=self._add_rule).pack(side="left")
         ttk.Button(btn_bar, text="全部执行", command=self._execute_all).pack(side="right")
 
         self.scroll = ScrollableFrame(self)
-        self.scroll.pack(fill="both", expand=True, padx=5)
+        self.scroll.pack(fill="both", expand=True, padx=PAD_OUTER)
 
-        self._empty_label = tk.Label(self.scroll.inner,
-            text="暂无 JSON 规则，点击上方「+ 添加规则」添加",
-            fg="gray", font=("Microsoft YaHei UI", 9))
+        self._empty_label = empty_label(self.scroll.inner, "暂无 JSON 规则，点击上方「+ 添加规则」添加")
         self._empty_label.pack(pady=30)
 
         self.status_var = tk.StringVar(value="就绪")
-        ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w").pack(fill="x", padx=5, pady=(0, 5))
+        ttk.Label(self, textvariable=self.status_var, relief=RELIEF_STATUS, anchor="w").pack(fill="x", padx=PAD_OUTER, pady=(0, PAD_OUTER))
 
         for rule in self.config.get("json_rules", []):
             data_str = rule.get("data", "")
@@ -44,7 +43,7 @@ class TabJson(ttk.Frame):
         self._empty_label.pack_forget()
         idx = len(self.rule_widgets)
         frame = ttk.LabelFrame(self.scroll.inner, text=f"规则 {idx + 1}", padding=8)
-        frame.pack(fill="x", padx=5, pady=4)
+        frame.pack(fill="x", padx=PAD_OUTER, pady=PAD_CARD)
 
         row1 = ttk.Frame(frame)
         row1.pack(fill="x", pady=3)
@@ -96,7 +95,7 @@ class TabJson(ttk.Frame):
 
     def _check_path(self, var, entry):
         p = var.get().strip()
-        entry.configure(foreground="red" if p and not os.path.exists(p) else "")
+        entry.configure(foreground=COLOR_FG_INVALID if p and not os.path.exists(p) else "")
 
     def _remove_rule(self, frame, widget_data):
         if not messagebox.askyesno("确认", "确定删除此规则？"):
