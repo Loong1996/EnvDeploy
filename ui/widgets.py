@@ -188,14 +188,13 @@ class LogPanel(ttk.Frame):
 
         header = ttk.Frame(self)
         header.pack(fill="x")
-        self._toggle_btn = ttk.Button(header, text="▲ 操作日志", width=14, command=self._toggle)
-        self._toggle_btn.pack(side="left")
+        ttk.Label(header, text="操作日志").pack(side="left", padx=4)
         ttk.Button(header, text="清空", width=6, command=self.clear).pack(side="right")
 
-        self._text_frame = ttk.Frame(self)
-        self._text = tk.Text(self._text_frame, height=7, state="disabled",
+        self._body = ttk.Frame(self)
+        self._text = tk.Text(self._body, height=7, state="disabled",
                              font=("Consolas", 9), wrap="word")
-        sb = ttk.Scrollbar(self._text_frame, command=self._text.yview)
+        sb = ttk.Scrollbar(self._body, orient="vertical", command=self._text.yview)
         self._text.configure(yscrollcommand=sb.set)
         self._text.pack(side="left", fill="both", expand=True)
         sb.pack(side="right", fill="y")
@@ -203,16 +202,16 @@ class LogPanel(ttk.Frame):
         self._text.tag_configure("err", foreground="#C62828")
         self._text.tag_configure("ts",  foreground="#9E9E9E")
 
-        self._expanded = False
+        self._visible = False
 
-    def _toggle(self):
-        if self._expanded:
-            self._text_frame.pack_forget()
-            self._toggle_btn.configure(text="▲ 操作日志")
+    def set_visible(self, visible: bool):
+        if visible == self._visible:
+            return
+        if visible:
+            self._body.pack(fill="both", expand=True)
         else:
-            self._text_frame.pack(fill="both", expand=True)
-            self._toggle_btn.configure(text="▼ 操作日志")
-        self._expanded = not self._expanded
+            self._body.pack_forget()
+        self._visible = visible
 
     def log(self, message, tag=""):
         ts = self._datetime.now().strftime("%H:%M:%S")

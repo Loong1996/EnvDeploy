@@ -33,17 +33,23 @@ class App:
         self.config = load_config()
         self._ui_ready = False
 
+        # 日志面板固定在底部（先 pack 才能正确占位）
+        self.log_panel = LogPanel(self.root)
+        self.log_panel.pack(side="bottom", fill="x", padx=5, pady=(0, 5))
+
         # 菜单栏
         menubar = tk.Menu(self.root)
         config_menu = tk.Menu(menubar, tearoff=0)
         config_menu.add_command(label="备份配置", command=self._backup_config)
         config_menu.add_command(label="恢复配置...", command=self._restore_config)
         menubar.add_cascade(label="配置管理", menu=config_menu)
-        self.root.config(menu=menubar)
 
-        # 日志面板固定在底部（先 pack 才能正确占位）
-        self.log_panel = LogPanel(self.root)
-        self.log_panel.pack(side="bottom", fill="x", padx=5, pady=(0, 5))
+        self._log_visible = tk.BooleanVar(value=False)
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_checkbutton(label="操作日志", variable=self._log_visible,
+                                  command=self._toggle_log)
+        menubar.add_cascade(label="查看", menu=view_menu)
+        self.root.config(menu=menubar)
 
         # 顶层 Notebook — 两套功能完全隔离
         self._top_notebook = ttk.Notebook(self.root)
@@ -109,6 +115,9 @@ class App:
 
         # 启动后恢复上次界面位置
         self.root.after(0, self._restore_ui_state)
+
+    def _toggle_log(self):
+        self.log_panel.set_visible(self._log_visible.get())
 
     def _save(self):
         save_config(self.config)
