@@ -19,78 +19,198 @@ FONT_ACTION        = (_FAMILY, 10, "bold")   # 次级操作按钮
 FONT_MONO_SM       = (_MONO,   9)            # 日志面板
 FONT_MONO_MD       = (_MONO,   10)           # 列表框、结果对话框
 
-# ── 颜色 ──────────────────────────────────────────────────────
-# 操作按钮
-COLOR_PRIMARY      = "#4CAF50"   # 绿 — 打包、确定、关闭
-COLOR_PRIMARY_ACT  = "#388E3C"
-COLOR_SECONDARY    = "#2196F3"   # 蓝 — 导入
-COLOR_SECONDARY_ACT= "#1565C0"
-COLOR_ACCENT       = "#9C27B0"   # 紫 — 同步
-COLOR_ACCENT_ACT   = "#6A1B9A"
-COLOR_DANGER       = "#FF7043"   # 橙 — 恢复/危险操作
-COLOR_DANGER_ACT   = "#BF360C"
-COLOR_CANCEL       = "#9E9E9E"   # 灰 — 取消
-COLOR_CANCEL_ACT   = "#757575"
+# ── 背景色 ────────────────────────────────────────────────────
+BG_WINDOW   = "#F1F4F8"   # 窗口/面板底色（浅蓝灰）
+BG_CONTENT  = "#FFFFFF"   # 内容区、卡片、输入框
+BORDER_COLOR = "#E2E8F0"  # 边框、分隔线
 
-# 文本前景色
+# ── 前景色 ────────────────────────────────────────────────────
+FG_LABEL       = "#2D3748"   # 主文字
 COLOR_FG_WHITE   = "white"
-COLOR_FG_SUCCESS = "#2E7D32"    # 成功文本（日志 ok tag）
-COLOR_FG_ERROR   = "#C62828"    # 错误文本（日志 err tag）
-COLOR_FG_MUTED   = "#9E9E9E"    # 次要文本（时间戳、提示、空状态）
-COLOR_FG_BODY    = "#333333"    # 普通结果文本
-COLOR_FG_INVALID = "red"        # 非法路径 Entry 前景
+COLOR_FG_SUCCESS = "#2E7D32"
+COLOR_FG_ERROR   = "#C62828"
+COLOR_FG_MUTED   = "#94A3B8"   # 次要文字、时间戳、空状态
+COLOR_FG_BODY    = "#334155"   # 普通结果文本
+COLOR_FG_INVALID = "#E53E3E"   # 非法路径 Entry 前景
 
-# 侧边栏
-COLOR_SIDEBAR_BG     = "#ECEFF1"
-COLOR_SIDEBAR_ACTIVE = "#B0BEC5"
-COLOR_SIDEBAR_HOVER  = "#CFD8DC"
+# ── 操作按钮色 ────────────────────────────────────────────────
+COLOR_PRIMARY       = "#4CAF50"
+COLOR_PRIMARY_ACT   = "#388E3C"
+COLOR_SECONDARY     = "#2196F3"
+COLOR_SECONDARY_ACT = "#1565C0"
+COLOR_ACCENT        = "#9C27B0"
+COLOR_ACCENT_ACT    = "#6A1B9A"
+COLOR_DANGER        = "#FF7043"
+COLOR_DANGER_ACT    = "#BF360C"
+COLOR_CANCEL        = "#64748B"
+COLOR_CANCEL_ACT    = "#475569"
+
+# ── 侧边栏（深色） ────────────────────────────────────────────
+COLOR_SIDEBAR_BG     = "#1E2A3A"   # 深蓝灰
+COLOR_SIDEBAR_ACTIVE = "#2D4A6E"   # 选中背景（蓝调）
+COLOR_SIDEBAR_HOVER  = "#263548"   # 悬停背景
+FG_SIDEBAR           = "#94A3B8"   # 未选中文字
+FG_SIDEBAR_SEL       = "#FFFFFF"   # 选中文字
 
 # ── 间距 ──────────────────────────────────────────────────────
-PAD_OUTER      = 5    # 外层容器 padx/pady
-PAD_INNER      = 8    # LabelFrame 内边距
-PAD_ROW        = 3    # 规则行垂直间距
-PAD_CARD       = 4    # 卡片间垂直间距
-PAD_SECTION    = 6    # 区块间垂直间距
-PAD_HERO_BTN   = 10   # 主按钮水平间距
-IPADY_HERO_BTN = 6    # 主按钮内部垂直填充
-IPADY_SIDEBAR  = 8    # 侧边栏按钮内部垂直填充
+PAD_OUTER      = 5
+PAD_INNER      = 8
+PAD_ROW        = 3
+PAD_CARD       = 4
+PAD_SECTION    = 6
+PAD_HERO_BTN   = 10
+IPADY_HERO_BTN = 6
+IPADY_SIDEBAR  = 8
 
 # ── 浮雕 ──────────────────────────────────────────────────────
-RELIEF_STATUS  = "sunken"    # 状态栏 Label
-RELIEF_LIST    = "sunken"    # 对话框列表区域
+RELIEF_STATUS  = "flat"      # 状态栏（flat + border_color 边框感）
+RELIEF_LIST    = "solid"     # 对话框列表区域
 RELIEF_LIST_BD = 1
-RELIEF_CARD    = "groove"    # 同步条目卡片
+RELIEF_CARD    = "solid"     # 同步条目卡片
 RELIEF_CARD_BD = 1
 
-# ── 按钮预设字典（使用方式：tk.Button(parent, text="…", **BTN_PRIMARY, command=fn)）
+# ── 按钮预设字典 ──────────────────────────────────────────────
 _BTN_BASE = dict(
     relief="flat", bd=0, cursor="hand2",
     fg=COLOR_FG_WHITE, activeforeground=COLOR_FG_WHITE,
 )
 
-# 主操作按钮（较大字体，用于页面顶部 hero 区域）
 BTN_PRIMARY   = {**_BTN_BASE, "bg": COLOR_PRIMARY,   "activebackground": COLOR_PRIMARY_ACT,   "font": FONT_HERO}
 BTN_SECONDARY = {**_BTN_BASE, "bg": COLOR_SECONDARY, "activebackground": COLOR_SECONDARY_ACT, "font": FONT_HERO}
 BTN_ACCENT    = {**_BTN_BASE, "bg": COLOR_ACCENT,    "activebackground": COLOR_ACCENT_ACT,    "font": FONT_HERO}
 BTN_ACTION    = {**_BTN_BASE, "bg": COLOR_PRIMARY,   "activebackground": COLOR_PRIMARY_ACT,   "font": FONT_ACTION}
 
-# 对话框按钮（正文字体，用于弹窗内）
 BTN_DIALOG_OK     = {**_BTN_BASE, "bg": COLOR_PRIMARY,  "activebackground": COLOR_PRIMARY_ACT,  "font": FONT_BODY}
 BTN_DIALOG_DANGER = {**_BTN_BASE, "bg": COLOR_DANGER,   "activebackground": COLOR_DANGER_ACT,   "font": FONT_BODY}
 BTN_DIALOG_CANCEL = {**_BTN_BASE, "bg": COLOR_CANCEL,   "activebackground": COLOR_CANCEL_ACT,   "font": FONT_BODY}
 
 
-# ── 工具函数 ──────────────────────────────────────────────────
+# ── ttk 样式配置 ──────────────────────────────────────────────
 
 def apply_ttk_styles(style) -> None:
     """统一配置 ttk.Style，在 App.__init__ 调用一次即可。"""
     style.theme_use("clam")
-    style.configure(".",                  font=FONT_BODY)
-    style.configure("TLabelframe.Label",  font=FONT_BODY_BOLD)
-    style.configure("TButton",            padding=[8, 3])
-    style.configure("TNotebook.Tab",      padding=[12, 4])
+
+    # 全局基础
+    style.configure(".",
+        font=FONT_BODY,
+        background=BG_WINDOW,
+        foreground=FG_LABEL,
+        bordercolor=BORDER_COLOR,
+        troughcolor=BG_WINDOW,
+        selectbackground="#BFDBFE",
+        selectforeground=FG_LABEL,
+    )
+
+    # Frame / LabelFrame
+    style.configure("TFrame",     background=BG_CONTENT)
+    style.configure("TLabelframe",
+        background=BG_CONTENT,
+        bordercolor=BORDER_COLOR,
+        relief="solid", borderwidth=1,
+    )
+    style.configure("TLabelframe.Label",
+        background=BG_CONTENT,
+        foreground=FG_LABEL,
+        font=FONT_BODY_BOLD,
+        padding=[4, 0],
+    )
+
+    # Label
+    style.configure("TLabel", background=BG_CONTENT, foreground=FG_LABEL)
+
+    # Entry
+    style.configure("TEntry",
+        fieldbackground=BG_CONTENT,
+        bordercolor=BORDER_COLOR,
+        lightcolor=BORDER_COLOR,
+        darkcolor=BORDER_COLOR,
+        relief="solid",
+    )
+    style.map("TEntry",
+        bordercolor=[("focus", "#93C5FD")],
+        lightcolor=[("focus", "#93C5FD")],
+    )
+
+    # 小型 ttk.Button
+    style.configure("TButton",
+        background="#EDF2F7",
+        foreground=FG_LABEL,
+        bordercolor=BORDER_COLOR,
+        lightcolor=BORDER_COLOR,
+        darkcolor=BORDER_COLOR,
+        relief="solid",
+        borderwidth=1,
+        padding=[8, 3],
+    )
+    style.map("TButton",
+        background=[("active", BORDER_COLOR), ("pressed", "#CBD5E0")],
+        relief=[("pressed", "solid")],
+    )
+
+    # Notebook
+    style.configure("TNotebook",
+        background=BG_WINDOW,
+        bordercolor=BORDER_COLOR,
+        tabmargins=[0, 0, 0, 0],
+    )
+    style.configure("TNotebook.Tab",
+        background="#E2E8F0",
+        foreground="#64748B",
+        padding=[14, 6],
+        font=FONT_BODY,
+        bordercolor=BORDER_COLOR,
+    )
+    style.map("TNotebook.Tab",
+        background=[("selected", BG_CONTENT)],
+        foreground=[("selected", FG_LABEL)],
+        expand=[("selected", [1, 1, 1, 0])],
+    )
+
+    # Scrollbar
+    style.configure("TScrollbar",
+        background=BORDER_COLOR,
+        troughcolor=BG_WINDOW,
+        borderwidth=0,
+        arrowsize=12,
+        relief="flat",
+    )
+    style.map("TScrollbar",
+        background=[("active", "#CBD5E0")],
+    )
+
+    # Progressbar
+    style.configure("TProgressbar",
+        background=COLOR_PRIMARY,
+        troughcolor=BORDER_COLOR,
+        borderwidth=0,
+    )
+
+    # Combobox
+    style.configure("TCombobox",
+        fieldbackground=BG_CONTENT,
+        bordercolor=BORDER_COLOR,
+        selectbackground=BG_CONTENT,
+        selectforeground=FG_LABEL,
+        arrowcolor=FG_LABEL,
+    )
+    style.map("TCombobox",
+        bordercolor=[("focus", "#93C5FD")],
+        fieldbackground=[("readonly", BG_CONTENT)],
+        selectbackground=[("readonly", BG_CONTENT)],
+        selectforeground=[("readonly", FG_LABEL)],
+    )
+
+    # Separator
+    style.configure("TSeparator", background=BORDER_COLOR)
+
+    # Checkbutton（用于 SelectionDialog）
+    style.configure("TCheckbutton",
+        background=BG_CONTENT,
+        foreground=FG_LABEL,
+    )
 
 
 def empty_label(parent, text: str) -> tk.Label:
-    """创建标准空状态提示标签（灰色正文字体）。"""
-    return tk.Label(parent, text=text, fg=COLOR_FG_MUTED, font=FONT_BODY)
+    """创建标准空状态提示标签。"""
+    return tk.Label(parent, text=text, fg=COLOR_FG_MUTED, font=FONT_BODY, bg=BG_CONTENT)

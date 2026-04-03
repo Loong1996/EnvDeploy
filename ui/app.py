@@ -12,7 +12,9 @@ from ui.theme import (
     apply_ttk_styles,
     FONT_BODY, FONT_BODY_BOLD,
     BTN_PRIMARY, BTN_SECONDARY, BTN_ACCENT,
+    BG_WINDOW, BG_CONTENT,
     COLOR_SIDEBAR_BG, COLOR_SIDEBAR_ACTIVE, COLOR_SIDEBAR_HOVER,
+    FG_SIDEBAR, FG_SIDEBAR_SEL,
     PAD_OUTER, PAD_HERO_BTN, IPADY_HERO_BTN, IPADY_SIDEBAR,
 )
 import os
@@ -30,6 +32,7 @@ class App:
         self.root.minsize(700, 500)
 
         apply_ttk_styles(ttk.Style())
+        self.root.configure(bg=BG_WINDOW)
 
         self.config = load_config()
         self._ui_ready = False
@@ -119,7 +122,7 @@ class App:
                   command=self._one_key_import).pack(side="left", padx=PAD_HERO_BTN, ipady=IPADY_HERO_BTN)
         ttk.Separator(page, orient="horizontal").pack(fill="x", padx=PAD_OUTER)
 
-        deploy_body = tk.Frame(page)
+        deploy_body = tk.Frame(page, bg=BG_CONTENT)
         deploy_body.pack(fill="both", expand=True)
 
         sidebar = tk.Frame(deploy_body, bg=COLOR_SIDEBAR_BG, width=90)
@@ -127,7 +130,7 @@ class App:
         sidebar.pack_propagate(False)
         ttk.Separator(deploy_body, orient="vertical").pack(side="left", fill="y")
 
-        content = tk.Frame(deploy_body)
+        content = tk.Frame(deploy_body, bg=BG_CONTENT)
         content.pack(side="left", fill="both", expand=True)
 
         self.tab_pack   = TabPack(content,   self.config, self._save)
@@ -147,13 +150,15 @@ class App:
         for i, (label, _) in enumerate(self._deploy_tabs):
             btn = tk.Button(sidebar, text=label, bd=0, relief="flat", cursor="hand2",
                             font=FONT_BODY, anchor="w", padx=12,
+                            fg=FG_SIDEBAR, activeforeground=FG_SIDEBAR_SEL,
                             bg=COLOR_SIDEBAR_BG, activebackground=COLOR_SIDEBAR_HOVER,
                             command=lambda idx=i: self._select_deploy_tab(idx))
             btn.pack(fill="x", ipady=IPADY_SIDEBAR)
             self._sidebar_btns.append(btn)
 
         self._deploy_tabs[0][1].pack(fill="both", expand=True)
-        self._sidebar_btns[0].configure(bg=COLOR_SIDEBAR_ACTIVE, font=FONT_BODY_BOLD)
+        self._sidebar_btns[0].configure(bg=COLOR_SIDEBAR_ACTIVE, font=FONT_BODY_BOLD,
+                                        fg=FG_SIDEBAR_SEL)
 
     def _build_sync_page(self, page):
         sync_bar = ttk.Frame(page)
@@ -171,12 +176,12 @@ class App:
         _, prev = self._deploy_tabs[self._deploy_tab_index]
         prev.pack_forget()
         self._sidebar_btns[self._deploy_tab_index].configure(
-            bg=COLOR_SIDEBAR_BG, font=FONT_BODY)
+            bg=COLOR_SIDEBAR_BG, font=FONT_BODY, fg=FG_SIDEBAR)
         self._deploy_tab_index = idx
         _, cur = self._deploy_tabs[idx]
         cur.pack(fill="both", expand=True)
         self._sidebar_btns[idx].configure(
-            bg=COLOR_SIDEBAR_ACTIVE, font=FONT_BODY_BOLD)
+            bg=COLOR_SIDEBAR_ACTIVE, font=FONT_BODY_BOLD, fg=FG_SIDEBAR_SEL)
         self._save_ui_state()
 
     def _toggle_log(self):
