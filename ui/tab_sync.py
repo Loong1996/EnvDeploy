@@ -57,24 +57,13 @@ class TabSync(ttk.Frame):
 
         ttk.Separator(self, orient="horizontal").pack(fill="x", padx=PAD_OUTER, pady=(0, PAD_CARD))
 
-        # 主体：可滚动区域，分同步项和目标工程两段
+        # 主体：可滚动区域，目标工程在上，同步项在下
         self._scroll = ScrollableFrame(self)
         self._scroll.pack(fill="both", expand=True, padx=PAD_OUTER)
 
-        # 同步项区域
-        self._items_frame = ttk.LabelFrame(self._scroll.inner, text="同步项", padding=PAD_OUTER)
-        self._items_frame.pack(fill="x", padx=PAD_ROW, pady=(PAD_ROW, 0))
-
-        item_bar = ttk.Frame(self._items_frame)
-        item_bar.pack(fill="x")
-        ttk.Button(item_bar, text="+ 添加同步项", command=self._add_item).pack(side="left")
-
-        self._items_list = ttk.Frame(self._items_frame)
-        self._items_list.pack(fill="x")
-
         # 目标工程区域
         self._targets_frame = ttk.LabelFrame(self._scroll.inner, text="目标工程目录", padding=PAD_OUTER)
-        self._targets_frame.pack(fill="x", padx=PAD_ROW, pady=(PAD_SECTION, PAD_ROW))
+        self._targets_frame.pack(fill="x", padx=PAD_ROW, pady=(PAD_ROW, 0))
 
         target_bar = ttk.Frame(self._targets_frame)
         target_bar.pack(fill="x")
@@ -82,6 +71,17 @@ class TabSync(ttk.Frame):
 
         self._targets_list = ttk.Frame(self._targets_frame)
         self._targets_list.pack(fill="x")
+
+        # 同步项区域
+        self._items_frame = ttk.LabelFrame(self._scroll.inner, text="同步项", padding=PAD_OUTER)
+        self._items_frame.pack(fill="x", padx=PAD_ROW, pady=(PAD_SECTION, PAD_ROW))
+
+        item_bar = ttk.Frame(self._items_frame)
+        item_bar.pack(fill="x")
+        ttk.Button(item_bar, text="+ 添加同步项", command=self._add_item).pack(side="left")
+
+        self._items_list = ttk.Frame(self._items_frame)
+        self._items_list.pack(fill="x")
 
     # ── 方案管理 ─────────────────────────────────────────────────────────────
 
