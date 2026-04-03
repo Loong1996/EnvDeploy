@@ -60,6 +60,9 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.unbind_all("<MouseWheel>")
 
     def _on_mousewheel(self, event):
+        first, last = self.canvas.yview()
+        if first <= 0.0 and last >= 1.0:
+            return
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
 
