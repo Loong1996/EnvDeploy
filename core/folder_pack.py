@@ -1,8 +1,16 @@
 import os
 import shutil
+import sys
 import zipfile
 
-APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def _app_dir():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+APP_DIR = _app_dir()
 PACKAGES_DIR = os.path.join(APP_DIR, "packages")
 
 

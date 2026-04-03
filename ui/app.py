@@ -1,13 +1,13 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
-from config import load_config, save_config
+from config import load_config, save_config, backup_config, list_backups, restore_config
 from ui.tab_pack import TabPack
 from ui.tab_import import TabImport
 from ui.tab_json import TabJson
 from ui.tab_envvar import TabEnvVar
 from ui.tab_sync import TabSync
-from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog, LogPanel
+from ui.widgets import ProgressDialog, SelectionDialog, ResultDialog, LogPanel, _RestoreDialog
 import os
 import glob
 from core.folder_pack import export_folder, import_folder, PACKAGES_DIR, get_packages_dir
@@ -32,6 +32,14 @@ class App:
 
         self.config = load_config()
         self._ui_ready = False
+
+        # 菜单栏
+        menubar = tk.Menu(self.root)
+        config_menu = tk.Menu(menubar, tearoff=0)
+        config_menu.add_command(label="备份配置", command=self._backup_config)
+        config_menu.add_command(label="恢复配置...", command=self._restore_config)
+        menubar.add_cascade(label="配置管理", menu=config_menu)
+        self.root.config(menu=menubar)
 
         # 日志面板固定在底部（先 pack 才能正确占位）
         self.log_panel = LogPanel(self.root)
@@ -249,6 +257,34 @@ class App:
             self.root.after(0, lambda s=summary, t=tag: self.log_panel.log(s, t))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _backup_config(self):
+        try:
+            dest = backup_config()
+            self.log_panel.log(f"配置已备份: {os.path.basename(dest)}", "ok")
+        except Exception as e:
+            messagebox.showerror("备份失败", str(e))
+
+    def _restore_config(self):
+        backups = list_backups()
+        if not backups:
+            messagebox.showinfo("恢复配置", "暂无备份文件")
+            return
+        _RestoreDialog(self.root, backups, self._do_restore)
+
+    def _do_restore(self, backup_path):
+        try:
+            restore_config(backup_path)
+            self.config = load_config()
+            # 刷新所有 Tab 的数据
+            for tab in (self.tab_pack, self.tab_import, self.tab_json, self.tab_envvar):
+                if hasattr(tab, "reload"):
+                    tab.reload(self.config)
+            self.tab_sync.reload(self.config) if hasattr(self.tab_sync, "reload") else None
+            self.log_panel.log(f"配置已恢复: {os.path.basename(backup_path)}", "ok")
+            messagebox.showinfo("恢复成功", f"已恢复配置:\n{os.path.basename(backup_path)}\n\n部分设置需重启程序生效。")
+        except Exception as e:
+            messagebox.showerror("恢复失败", str(e))
 
     def _one_key_sync(self):
         # 取当前批量同步 Tab 中选中的方案

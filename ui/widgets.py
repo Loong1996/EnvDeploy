@@ -221,8 +221,6 @@ class LogPanel(ttk.Frame):
         self._text.insert("end", message + "\n", tag)
         self._text.see("end")
         self._text.configure(state="disabled")
-        if not self._expanded:
-            self._toggle()
 
     def clear(self):
         self._text.configure(state="normal")
@@ -281,3 +279,62 @@ class ResultDialog(tk.Toplevel):
 
     def show(self):
         self.wait_window()
+
+
+class _RestoreDialog(tk.Toplevel):
+    """选择一个备份文件进行恢复。"""
+
+    def __init__(self, parent, backups, on_confirm):
+        """
+        backups: list of (label, path)
+        on_confirm: callable(path)
+        """
+        super().__init__(parent)
+        self.title("恢复配置")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+        self._backups = backups
+        self._on_confirm = on_confirm
+
+        ttk.Label(self, text="选择要恢复的备份（最新在前）：",
+                  padding=(10, 8, 10, 4)).pack(anchor="w")
+
+        frame = tk.Frame(self, relief="sunken", bd=1)
+        frame.pack(fill="both", expand=True, padx=10, pady=4)
+
+        sb = ttk.Scrollbar(frame, orient="vertical")
+        self._listbox = tk.Listbox(frame, yscrollcommand=sb.set,
+                                   font=("Consolas", 10), selectmode="browse",
+                                   activestyle="dotbox", height=min(len(backups), 12))
+        sb.configure(command=self._listbox.yview)
+        self._listbox.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+
+        for label, _ in backups:
+            self._listbox.insert("end", f"  {label}")
+        self._listbox.selection_set(0)
+
+        btn_row = tk.Frame(self)
+        btn_row.pack(fill="x", padx=10, pady=(4, 10))
+        tk.Button(btn_row, text="恢复", width=8, command=self._ok,
+                  bg="#FF7043", fg="white",
+                  activebackground="#BF360C", activeforeground="white").pack(side="right", padx=(4, 0))
+        tk.Button(btn_row, text="取消", width=8, command=self.destroy,
+                  bg="#9E9E9E", fg="white",
+                  activebackground="#757575", activeforeground="white").pack(side="right")
+
+        self.geometry(f"360x{min(len(backups), 12) * 22 + 100}")
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        self.bind("<Escape>", lambda e: self.destroy())
+        center_window(self, parent)
+        self.focus_force()
+
+    def _ok(self):
+        sel = self._listbox.curselection()
+        if not sel:
+            return
+        _, path = self._backups[sel[0]]
+        self.grab_release()
+        self.destroy()
+        self._on_confirm(path)
