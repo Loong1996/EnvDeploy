@@ -33,9 +33,8 @@ class App:
         self.config = load_config()
         self._ui_ready = False
 
-        # 日志面板固定在底部（先 pack 才能正确占位）
+        # 日志面板（默认隐藏，由菜单「查看→操作日志」控制）
         self.log_panel = LogPanel(self.root)
-        self.log_panel.pack(side="bottom", fill="x", padx=5, pady=(0, 5))
 
         # 菜单栏
         menubar = tk.Menu(self.root)
@@ -117,7 +116,10 @@ class App:
         self.root.after(0, self._restore_ui_state)
 
     def _toggle_log(self):
-        self.log_panel.set_visible(self._log_visible.get())
+        if self._log_visible.get():
+            self.log_panel.pack(side="bottom", fill="x", padx=5, pady=(0, 5))
+        else:
+            self.log_panel.pack_forget()
 
     def _save(self):
         save_config(self.config)
