@@ -193,7 +193,7 @@ class TabTimestamp(ttk.Frame):
         try:
             dt, is_ms = _ts_to_dt(raw)
             label = "（毫秒输入）" if is_ms else "（秒输入）"
-            self._ts_result_var.set(dt.strftime("%Y-%m-%d  %H:%M:%S") + f"  {label}")
+            self._ts_result_var.set(dt.strftime("%Y-%m-%d %H:%M:%S"))
         except Exception as e:
             self._err_var.set(f"错误：{e}")
             self._ts_result_var.set("")
