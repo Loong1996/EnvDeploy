@@ -75,19 +75,43 @@ class App:
         btn_import.pack(side="left", padx=10, ipady=6)
         ttk.Separator(deploy_page, orient="horizontal").pack(fill="x", padx=5)
 
-        self._deploy_notebook = ttk.Notebook(deploy_page)
-        self._deploy_notebook.pack(fill="both", expand=True, padx=5, pady=5)
-        deploy_notebook = self._deploy_notebook
+        # 左侧导航 + 右侧内容
+        deploy_body = tk.Frame(deploy_page)
+        deploy_body.pack(fill="both", expand=True)
 
-        self.tab_pack = TabPack(deploy_notebook, self.config, self._save)
-        self.tab_import = TabImport(deploy_notebook, self.config, self._save)
-        self.tab_json = TabJson(deploy_notebook, self.config, self._save)
-        self.tab_envvar = TabEnvVar(deploy_notebook, self.config, self._save)
+        sidebar = tk.Frame(deploy_body, bg="#ECEFF1", width=90)
+        sidebar.pack(side="left", fill="y")
+        sidebar.pack_propagate(False)
+        ttk.Separator(deploy_body, orient="vertical").pack(side="left", fill="y")
 
-        deploy_notebook.add(self.tab_pack, text="  打包文件  ")
-        deploy_notebook.add(self.tab_import, text="  导入文件  ")
-        deploy_notebook.add(self.tab_json, text="  JSON操作  ")
-        deploy_notebook.add(self.tab_envvar, text="  环境变量  ")
+        content = tk.Frame(deploy_body)
+        content.pack(side="left", fill="both", expand=True)
+
+        self.tab_pack = TabPack(content, self.config, self._save)
+        self.tab_import = TabImport(content, self.config, self._save)
+        self.tab_json = TabJson(content, self.config, self._save)
+        self.tab_envvar = TabEnvVar(content, self.config, self._save)
+
+        self._deploy_tabs = [
+            ("打包文件", self.tab_pack),
+            ("导入文件", self.tab_import),
+            ("JSON操作", self.tab_json),
+            ("环境变量", self.tab_envvar),
+        ]
+        self._deploy_tab_index = 0
+        self._sidebar_btns = []
+
+        for i, (label, frame) in enumerate(self._deploy_tabs):
+            btn = tk.Button(sidebar, text=label, bd=0, relief="flat", cursor="hand2",
+                            font=("Microsoft YaHei UI", 9), anchor="w", padx=12,
+                            bg="#ECEFF1", activebackground="#CFD8DC",
+                            command=lambda idx=i: self._select_deploy_tab(idx))
+            btn.pack(fill="x", ipady=8)
+            self._sidebar_btns.append(btn)
+
+        # 初始显示第一个 tab
+        self._deploy_tabs[0][1].pack(fill="both", expand=True)
+        self._sidebar_btns[0].configure(bg="#B0BEC5", font=("Microsoft YaHei UI", 9, "bold"))
 
         # === 页面2: 批量同步 ===
         sync_page = ttk.Frame(top_notebook)
@@ -106,11 +130,9 @@ class App:
         self.tab_sync = TabSync(sync_page, self.config, self._save)
         self.tab_sync.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # 绑定 tab 切换事件，保存界面状态
+        # 绑定 top tab 切换事件，保存界面状态
         self._top_notebook.bind("<<NotebookTabChanged>>",
                                 lambda _: self._save_ui_state())
-        self._deploy_notebook.bind("<<NotebookTabChanged>>",
-                                   lambda _: self._save_ui_state())
 
         # 启动后恢复上次界面位置
         self.root.after(0, self._restore_ui_state)
@@ -124,12 +146,24 @@ class App:
     def _save(self):
         save_config(self.config)
 
+    def _select_deploy_tab(self, idx):
+        _, prev = self._deploy_tabs[self._deploy_tab_index]
+        prev.pack_forget()
+        self._sidebar_btns[self._deploy_tab_index].configure(
+            bg="#ECEFF1", font=("Microsoft YaHei UI", 9))
+        self._deploy_tab_index = idx
+        _, cur = self._deploy_tabs[idx]
+        cur.pack(fill="both", expand=True)
+        self._sidebar_btns[idx].configure(
+            bg="#B0BEC5", font=("Microsoft YaHei UI", 9, "bold"))
+        self._save_ui_state()
+
     def _save_ui_state(self):
         if not self._ui_ready:
             return
         ui = self.config.setdefault("ui_state", {})
         ui["top_tab"] = self._top_notebook.index("current")
-        ui["deploy_tab"] = self._deploy_notebook.index("current")
+        ui["deploy_tab"] = self._deploy_tab_index
         save_config(self.config)
 
     def _restore_ui_state(self):
@@ -141,7 +175,7 @@ class App:
         except Exception:
             pass
         try:
-            self._deploy_notebook.select(deploy)
+            self._select_deploy_tab(deploy)
         except Exception:
             pass
         self._ui_ready = True
