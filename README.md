@@ -1,4 +1,4 @@
-# Deploy & Config Tool
+# DeployConfigTool
 
 面向开发者的桌面运维小工具，基于 Python + tkinter 构建，支持打包为单文件 `.exe` 免安装使用。
 
@@ -55,19 +55,19 @@ python main.py
 pip install pyinstaller
 
 # 使用已有 spec 文件（推荐）
-pyinstaller aicoding-env-tool.spec
+pyinstaller DeployConfigTool.spec
 
 # 或重新全量打包
-pyinstaller --onefile --windowed --name "aicoding-env-tool" main.py
+pyinstaller --onefile --windowed --name "DeployConfigTool" main.py
 ```
 
-打包产物在 `dist/aicoding-env-tool.exe`，约 13 MB，无需安装 Python。
+打包产物在 `dist/DeployConfigTool.exe`，约 13 MB，无需安装 Python。
 
 ### 分发目录结构
 
 ```
 发布目录/
-├── aicoding-env-tool.exe   ← 主程序
+├── DeployConfigTool.exe   ← 主程序
 ├── config.json             ← 首次运行后自动生成（用户配置）
 ├── config_backups/         ← 配置备份目录（自动创建）
 └── packages/               ← 打包输出目录（首次使用后自动创建）

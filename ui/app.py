@@ -28,7 +28,7 @@ from core.file_sync import sync_files
 class App:
     def __init__(self, root):
         self.root = root
-        self.root.title("Deploy & Config Tool")
+        self.root.title("DeployConfigTool")
         self.root.geometry("900x620")
         self.root.minsize(700, 500)
 
