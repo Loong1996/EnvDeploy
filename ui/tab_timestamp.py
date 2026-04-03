@@ -1,10 +1,11 @@
-import time
+import ctypes
+import platform
 import tkinter as tk
 from datetime import datetime
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 from ui.theme import (
-    BG_CONTENT, BTN_ACTION, BTN_DIALOG_OK,
+    BG_CONTENT, BTN_ACTION, BTN_DIALOG_OK, BTN_DIALOG_DANGER,
     COLOR_FG_ERROR, COLOR_FG_MUTED, FG_LABEL,
     FONT_BODY, FONT_BODY_BOLD, FONT_MONO_MD,
     PAD_CARD, PAD_INNER, PAD_OUTER, PAD_ROW,
@@ -39,6 +40,37 @@ def _dt_to_ts(dt_str: str):
         except ValueError:
             continue
     raise ValueError(f"无法识别的日期格式: {dt_str}")
+
+
+def _set_system_time(dt: datetime):
+    """设置本地系统时间（仅 Windows，需管理员权限）。"""
+    if platform.system() != "Windows":
+        raise OSError("设置系统时间仅支持 Windows")
+
+    class SYSTEMTIME(ctypes.Structure):
+        _fields_ = [
+            ("wYear",         ctypes.c_uint16),
+            ("wMonth",        ctypes.c_uint16),
+            ("wDayOfWeek",    ctypes.c_uint16),
+            ("wDay",          ctypes.c_uint16),
+            ("wHour",         ctypes.c_uint16),
+            ("wMinute",       ctypes.c_uint16),
+            ("wSecond",       ctypes.c_uint16),
+            ("wMilliseconds", ctypes.c_uint16),
+        ]
+
+    st = SYSTEMTIME(dt.year, dt.month, 0, dt.day,
+                    dt.hour, dt.minute, dt.second, 0)
+    ok = ctypes.windll.kernel32.SetLocalTime(ctypes.byref(st))
+    if not ok:
+        raise PermissionError("设置失败，请以管理员身份运行程序")
+
+
+def _make_result_entry(parent, var, font=FONT_MONO_MD):
+    """创建可选中文本的只读 Entry。"""
+    e = ttk.Entry(parent, textvariable=var, font=font,
+                  state="readonly", cursor="xterm")
+    return e
 
 
 class TabTimestamp(ttk.Frame):
@@ -79,8 +111,8 @@ class TabTimestamp(ttk.Frame):
         row2.pack(fill="x")
         ttk.Label(row2, text="结果:", width=10).pack(side="left")
         self._ts_result_var = tk.StringVar()
-        ttk.Label(row2, textvariable=self._ts_result_var,
-                  font=FONT_MONO_MD, foreground=FG_LABEL).pack(side="left")
+        _make_result_entry(row2, self._ts_result_var).pack(
+            side="left", fill="x", expand=True)
 
         # ── 日期时间 → 时间戳 ──────────────────────────────────
         f2 = ttk.LabelFrame(body, text="日期时间  →  时间戳", padding=PAD_INNER)
@@ -108,15 +140,38 @@ class TabTimestamp(ttk.Frame):
         row5.pack(fill="x", pady=(0, PAD_ROW))
         ttk.Label(row5, text="秒:", width=10).pack(side="left")
         self._dt_sec_var = tk.StringVar()
-        ttk.Label(row5, textvariable=self._dt_sec_var,
-                  font=FONT_MONO_MD, foreground=FG_LABEL).pack(side="left")
+        _make_result_entry(row5, self._dt_sec_var).pack(
+            side="left", fill="x", expand=True)
 
         row6 = ttk.Frame(f2)
         row6.pack(fill="x")
         ttk.Label(row6, text="毫秒:", width=10).pack(side="left")
         self._dt_ms_var = tk.StringVar()
-        ttk.Label(row6, textvariable=self._dt_ms_var,
-                  font=FONT_MONO_MD, foreground=FG_LABEL).pack(side="left")
+        _make_result_entry(row6, self._dt_ms_var).pack(
+            side="left", fill="x", expand=True)
+
+        # ── 设置系统时间 ────────────────────────────────────────
+        f3 = ttk.LabelFrame(body, text="设置系统时间", padding=PAD_INNER)
+        f3.pack(fill="x", pady=(0, PAD_CARD))
+
+        row7 = ttk.Frame(f3)
+        row7.pack(fill="x", pady=(0, PAD_ROW))
+        ttk.Label(row7, text="目标时间:", width=10).pack(side="left")
+        self._set_dt_input = ttk.Entry(row7, font=FONT_MONO_MD)
+        self._set_dt_input.pack(side="left", fill="x", expand=True, padx=PAD_ROW)
+        ttk.Label(row7, text="格式：2026-04-03 15:30:00",
+                  foreground=COLOR_FG_MUTED, font=FONT_BODY).pack(side="left", padx=(PAD_ROW, 0))
+
+        row8 = ttk.Frame(f3)
+        row8.pack(fill="x")
+        ttk.Label(row8, text="", width=10).pack(side="left")
+        tk.Button(row8, text="填入当前时间", width=12, **BTN_DIALOG_OK,
+                  command=self._fill_set_now).pack(side="left", padx=(0, PAD_ROW))
+        tk.Button(row8, text="设置系统时间", width=12, **BTN_DIALOG_DANGER,
+                  command=self._apply_system_time).pack(side="left")
+        self._set_status_var = tk.StringVar()
+        ttk.Label(row8, textvariable=self._set_status_var,
+                  font=FONT_BODY, foreground=COLOR_FG_MUTED).pack(side="left", padx=(PAD_ROW, 0))
 
         # 错误提示
         self._err_var = tk.StringVar()
@@ -126,6 +181,7 @@ class TabTimestamp(ttk.Frame):
         # 绑定 Enter 键
         self._ts_input.bind("<Return>", lambda _: self._convert_ts())
         self._dt_input.bind("<Return>", lambda _: self._convert_dt())
+        self._set_dt_input.bind("<Return>", lambda _: self._apply_system_time())
 
     # ── 转换逻辑 ────────────────────────────────────────────────
 
@@ -174,6 +230,41 @@ class TabTimestamp(ttk.Frame):
         self._now_label.configure(
             text=f"当前：{now.strftime('%Y-%m-%d %H:%M:%S')}  |  {ts_sec} 秒  /  {ts_ms} 毫秒"
         )
+
+    def _fill_set_now(self):
+        now = datetime.now()
+        self._set_dt_input.delete(0, "end")
+        self._set_dt_input.insert(0, now.strftime("%Y-%m-%d %H:%M:%S"))
+        self._set_status_var.set("")
+
+    def _apply_system_time(self):
+        self._err_var.set("")
+        self._set_status_var.set("")
+        raw = self._set_dt_input.get().strip()
+        if not raw:
+            return
+        try:
+            dt_str = raw
+            dt = None
+            for fmt in _DT_FORMATS:
+                try:
+                    dt = datetime.strptime(dt_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            if dt is None:
+                raise ValueError(f"无法识别的日期格式: {raw}")
+
+            if not messagebox.askokcancel(
+                "确认", f"确定将系统时间设置为：\n{dt.strftime('%Y-%m-%d %H:%M:%S')}？",
+                parent=self.winfo_toplevel()
+            ):
+                return
+
+            _set_system_time(dt)
+            self._set_status_var.set(f"已设置为 {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+        except Exception as e:
+            self._err_var.set(f"错误：{e}")
 
     def _copy(self, text: str):
         if not text:
