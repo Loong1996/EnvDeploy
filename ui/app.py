@@ -38,6 +38,11 @@ class App:
 
         # 菜单栏
         menubar = tk.Menu(self.root)
+
+        app_menu = tk.Menu(menubar, tearoff=0)
+        app_menu.add_command(label="退出", command=self.root.destroy)
+        menubar.add_cascade(label="应用", menu=app_menu)
+
         config_menu = tk.Menu(menubar, tearoff=0)
         config_menu.add_command(label="备份配置", command=self._backup_config)
         config_menu.add_command(label="恢复配置...", command=self._restore_config)
