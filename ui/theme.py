@@ -164,6 +164,8 @@ def apply_ttk_styles(style) -> None:
     style.map("TNotebook.Tab",
         background=[("selected", BG_CONTENT)],
         foreground=[("selected", FG_LABEL)],
+        font=[("selected", FONT_BODY)],
+        padding=[("selected", [14, 6])],
     )
 
     # Scrollbar
