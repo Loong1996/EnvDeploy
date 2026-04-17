@@ -42,6 +42,14 @@ def _dt_to_ts(dt_str: str):
     raise ValueError(f"无法识别的日期格式: {dt_str}")
 
 
+def _parse_yymmddhhmm(s: str) -> datetime:
+    """YYMMDDhhmm（10 位数字）→ datetime，年按 20YY 解析。"""
+    s = s.strip()
+    if len(s) != 10 or not s.isdigit():
+        raise ValueError(f"需要 10 位数字 YYMMDDhhmm，收到: {s!r}")
+    return datetime.strptime(s, "%y%m%d%H%M")
+
+
 def _set_system_time(dt: datetime):
     """设置本地系统时间（仅 Windows，需管理员权限）。"""
     if platform.system() != "Windows":
@@ -173,6 +181,41 @@ class TabTimestamp(ttk.Frame):
         ttk.Label(row8, textvariable=self._set_status_var,
                   font=FONT_BODY, foreground=COLOR_FG_MUTED).pack(side="left", padx=(PAD_ROW, 0))
 
+        # ── YYMMDDhhmm 时间差 ──────────────────────────────────
+        f4 = ttk.LabelFrame(body, text="时间差（YYMMDDhhmm，单位：分钟）", padding=PAD_INNER)
+        f4.pack(fill="x", pady=(0, PAD_CARD))
+
+        row9 = ttk.Frame(f4)
+        row9.pack(fill="x", pady=(0, PAD_ROW))
+        ttk.Label(row9, text="时间 A:", width=10).pack(side="left")
+        self._diff_a_input = ttk.Entry(row9, font=FONT_MONO_MD)
+        self._diff_a_input.pack(side="left", fill="x", expand=True, padx=PAD_ROW)
+        ttk.Label(row9, text="格式：2504171530",
+                  foreground=COLOR_FG_MUTED, font=FONT_BODY).pack(side="left", padx=(PAD_ROW, 0))
+
+        row10 = ttk.Frame(f4)
+        row10.pack(fill="x", pady=(0, PAD_ROW))
+        ttk.Label(row10, text="时间 B:", width=10).pack(side="left")
+        self._diff_b_input = ttk.Entry(row10, font=FONT_MONO_MD)
+        self._diff_b_input.pack(side="left", fill="x", expand=True, padx=PAD_ROW)
+        ttk.Label(row10, text="结果 = B - A",
+                  foreground=COLOR_FG_MUTED, font=FONT_BODY).pack(side="left", padx=(PAD_ROW, 0))
+
+        row11 = ttk.Frame(f4)
+        row11.pack(fill="x", pady=(0, PAD_ROW))
+        ttk.Label(row11, text="", width=10).pack(side="left")
+        tk.Button(row11, text="计算", width=6, **BTN_DIALOG_OK,
+                  command=self._calc_diff).pack(side="left", padx=(0, PAD_ROW))
+        tk.Button(row11, text="复制", width=6, **BTN_DIALOG_OK,
+                  command=lambda: self._copy(self._diff_result_var.get())).pack(side="left")
+
+        row12 = ttk.Frame(f4)
+        row12.pack(fill="x")
+        ttk.Label(row12, text="结果:", width=10).pack(side="left")
+        self._diff_result_var = tk.StringVar()
+        _make_result_entry(row12, self._diff_result_var).pack(
+            side="left", fill="x", expand=True)
+
         # 错误提示
         self._err_var = tk.StringVar()
         ttk.Label(body, textvariable=self._err_var,
@@ -182,6 +225,8 @@ class TabTimestamp(ttk.Frame):
         self._ts_input.bind("<Return>", lambda _: self._convert_ts())
         self._dt_input.bind("<Return>", lambda _: self._convert_dt())
         self._set_dt_input.bind("<Return>", lambda _: self._apply_system_time())
+        self._diff_a_input.bind("<Return>", lambda _: self._calc_diff())
+        self._diff_b_input.bind("<Return>", lambda _: self._calc_diff())
 
     # ── 转换逻辑 ────────────────────────────────────────────────
 
@@ -265,6 +310,31 @@ class TabTimestamp(ttk.Frame):
             self._set_status_var.set(f"已设置为 {dt.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
             self._err_var.set(f"错误：{e}")
+
+    def _calc_diff(self):
+        self._err_var.set("")
+        a_raw = self._diff_a_input.get().strip()
+        b_raw = self._diff_b_input.get().strip()
+        if not a_raw or not b_raw:
+            return
+        try:
+            dt_a = _parse_yymmddhhmm(a_raw)
+            dt_b = _parse_yymmddhhmm(b_raw)
+            minutes = int((dt_b - dt_a).total_seconds() // 60)
+            sign = "+" if minutes >= 0 else "-"
+            mins_abs = abs(minutes)
+            hours, mins = divmod(mins_abs, 60)
+            days, hours = divmod(hours, 24)
+            parts = []
+            if days:
+                parts.append(f"{days}天")
+            if hours:
+                parts.append(f"{hours}小时")
+            parts.append(f"{mins}分钟")
+            self._diff_result_var.set(f"{sign}{mins_abs} 分钟  ({sign}{''.join(parts)})")
+        except Exception as e:
+            self._err_var.set(f"错误：{e}")
+            self._diff_result_var.set("")
 
     def _copy(self, text: str):
         if not text:
