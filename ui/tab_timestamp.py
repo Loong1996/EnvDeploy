@@ -10,6 +10,7 @@ from ui.theme import (
     FONT_BODY, FONT_BODY_BOLD, FONT_MONO_MD,
     PAD_CARD, PAD_INNER, PAD_OUTER, PAD_ROW,
 )
+from ui.widgets import ScrollableFrame
 
 _DT_FORMATS = [
     "%Y-%m-%d %H:%M:%S",
@@ -98,8 +99,9 @@ class TabTimestamp(ttk.Frame):
 
         ttk.Separator(self, orient="horizontal").pack(fill="x", padx=PAD_OUTER)
 
-        body = ttk.Frame(self)
-        body.pack(fill="both", expand=True, padx=PAD_INNER, pady=PAD_INNER)
+        _scroll = ScrollableFrame(self)
+        _scroll.pack(fill="both", expand=True, padx=PAD_INNER, pady=PAD_INNER)
+        body = _scroll.inner
 
         # ── 时间戳 → 日期时间 ──────────────────────────────────
         f1 = ttk.LabelFrame(body, text="时间戳  →  日期时间", padding=PAD_INNER)
@@ -216,6 +218,38 @@ class TabTimestamp(ttk.Frame):
         _make_result_entry(row12, self._diff_result_var).pack(
             side="left", fill="x", expand=True)
 
+        # ── Unix 时间戳差值 ─────────────────────────────────────
+        f5 = ttk.LabelFrame(body, text="Unix 时间戳差值（自动识别秒/毫秒）", padding=PAD_INNER)
+        f5.pack(fill="x", pady=(0, PAD_CARD))
+
+        row13 = ttk.Frame(f5)
+        row13.pack(fill="x", pady=(0, PAD_ROW))
+        ttk.Label(row13, text="时间戳 A:", width=10).pack(side="left")
+        self._ts_diff_a_input = ttk.Entry(row13, font=FONT_MONO_MD)
+        self._ts_diff_a_input.pack(side="left", fill="x", expand=True, padx=PAD_ROW)
+
+        row14 = ttk.Frame(f5)
+        row14.pack(fill="x", pady=(0, PAD_ROW))
+        ttk.Label(row14, text="时间戳 B:", width=10).pack(side="left")
+        self._ts_diff_b_input = ttk.Entry(row14, font=FONT_MONO_MD)
+        self._ts_diff_b_input.pack(side="left", fill="x", expand=True, padx=PAD_ROW)
+        ttk.Label(row14, text="结果 = B - A",
+                  foreground=COLOR_FG_MUTED, font=FONT_BODY).pack(side="left", padx=(PAD_ROW, 0))
+
+        row15 = ttk.Frame(f5)
+        row15.pack(fill="x", pady=(0, PAD_ROW))
+        ttk.Label(row15, text="", width=10).pack(side="left")
+        tk.Button(row15, text="计算", width=6, **BTN_DIALOG_OK,
+                  command=self._calc_ts_diff).pack(side="left", padx=(0, PAD_ROW))
+
+        row16 = ttk.Frame(f5)
+        row16.pack(fill="x")
+        ttk.Label(row16, text="差值:", width=10, anchor="nw").pack(side="left", anchor="n")
+        self._ts_diff_result_var = tk.StringVar()
+        ttk.Label(row16, textvariable=self._ts_diff_result_var,
+                  font=FONT_MONO_MD, foreground=FG_LABEL,
+                  background=BG_CONTENT, justify="left").pack(side="left", fill="x", expand=True, anchor="w")
+
         # 错误提示
         self._err_var = tk.StringVar()
         ttk.Label(body, textvariable=self._err_var,
@@ -227,6 +261,8 @@ class TabTimestamp(ttk.Frame):
         self._set_dt_input.bind("<Return>", lambda _: self._apply_system_time())
         self._diff_a_input.bind("<Return>", lambda _: self._calc_diff())
         self._diff_b_input.bind("<Return>", lambda _: self._calc_diff())
+        self._ts_diff_a_input.bind("<Return>", lambda _: self._calc_ts_diff())
+        self._ts_diff_b_input.bind("<Return>", lambda _: self._calc_ts_diff())
 
     # ── 转换逻辑 ────────────────────────────────────────────────
 
@@ -335,6 +371,72 @@ class TabTimestamp(ttk.Frame):
         except Exception as e:
             self._err_var.set(f"错误：{e}")
             self._diff_result_var.set("")
+
+    def _calc_ts_diff(self):
+        self._err_var.set("")
+        a_raw = self._ts_diff_a_input.get().strip()
+        b_raw = self._ts_diff_b_input.get().strip()
+        if not a_raw or not b_raw:
+            return
+        try:
+            dt_a, _ = _ts_to_dt(a_raw)
+            dt_b, _ = _ts_to_dt(b_raw)
+            delta = dt_b - dt_a
+            secs = int(delta.total_seconds())
+            sign = "+" if secs >= 0 else "-"
+            secs_abs = abs(secs)
+
+            mins   = secs_abs / 60
+            hours  = secs_abs / 3600
+            days   = secs_abs / 86400
+            weeks  = days / 7
+            months = days / 30.44      # 平均月长
+            years  = days / 365.25     # 含闰年平均
+
+            # 日历分解（年-月-日-时-分-秒）
+            def _cal_breakdown(a, b):
+                if a > b:
+                    a, b = b, a
+                y = b.year - a.year
+                mo = b.month - a.month
+                d = b.day - a.day
+                h = b.hour - a.hour
+                mi = b.minute - a.minute
+                se = b.second - a.second
+                if se < 0: se += 60; mi -= 1
+                if mi < 0: mi += 60; h  -= 1
+                if h  < 0: h  += 24; d  -= 1
+                if d  < 0:
+                    prev_month = (b.month - 1) or 12
+                    prev_year  = b.year if b.month != 1 else b.year - 1
+                    import calendar
+                    d += calendar.monthrange(prev_year, prev_month)[1]
+                    mo -= 1
+                if mo < 0: mo += 12; y -= 1
+                return y, mo, d, h, mi, se
+
+            y, mo, d, h, mi, se = _cal_breakdown(dt_a, dt_b)
+            cal_parts = []
+            for val, unit in [(y, "年"), (mo, "月"), (d, "天"),
+                              (h, "小时"), (mi, "分"), (se, "秒")]:
+                if val:
+                    cal_parts.append(f"{val}{unit}")
+            cal_str = "".join(cal_parts) if cal_parts else "0秒"
+
+            text = (
+                f"{sign}{secs_abs:,} 秒\n"
+                f"{sign}{mins:,.2f} 分钟\n"
+                f"{sign}{hours:,.2f} 小时\n"
+                f"{sign}{days:,.4f} 天\n"
+                f"{sign}{weeks:,.4f} 周\n"
+                f"≈{sign}{months:,.4f} 月  (按 30.44 天)\n"
+                f"≈{sign}{years:,.4f} 年  (按 365.25 天)\n"
+                f"日历差: {sign}{cal_str}"
+            )
+            self._ts_diff_result_var.set(text)
+        except Exception as e:
+            self._err_var.set(f"错误：{e}")
+            self._ts_diff_result_var.set("")
 
     def _copy(self, text: str):
         if not text:
