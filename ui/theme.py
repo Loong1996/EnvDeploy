@@ -189,17 +189,21 @@ def apply_ttk_styles(style) -> None:
 
     # Combobox
     style.configure("TCombobox",
+        foreground=FG_LABEL,
         fieldbackground=BG_CONTENT,
+        background=BG_CONTENT,
         bordercolor=BORDER_COLOR,
         selectbackground=BG_CONTENT,
         selectforeground=FG_LABEL,
         arrowcolor=FG_LABEL,
+        insertcolor=FG_LABEL,
     )
     style.map("TCombobox",
+        foreground=[("readonly", FG_LABEL), ("disabled", COLOR_FG_MUTED)],
         bordercolor=[("focus", "#93C5FD")],
-        fieldbackground=[("readonly", BG_CONTENT)],
-        selectbackground=[("readonly", BG_CONTENT)],
-        selectforeground=[("readonly", FG_LABEL)],
+        fieldbackground=[("readonly", BG_CONTENT), ("disabled", BG_WINDOW)],
+        selectbackground=[("readonly", BG_CONTENT), ("!focus", BG_CONTENT)],
+        selectforeground=[("readonly", FG_LABEL), ("!focus", FG_LABEL)],
     )
 
     # Separator

@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
-from ui.widgets import ScrollableFrame
+from ui.widgets import ScrollableFrame, guard_combobox
 from ui.theme import COLOR_FG_INVALID, COLOR_FG_ERROR, PAD_OUTER, PAD_CARD, RELIEF_STATUS, empty_label
 from core.env_vars import execute_env_rule, check_admin
 
@@ -52,6 +52,7 @@ class TabEnvVar(ttk.Frame):
         op_combo = ttk.Combobox(row1, textvariable=op_var, state="readonly", width=15,
                                 values=[k for k, _ in self.OPERATIONS])
         op_combo.pack(side="left", padx=2)
+        guard_combobox(op_combo, op_var)
         op_label_var = tk.StringVar()
         op_label = ttk.Label(row1, textvariable=op_label_var, foreground="gray")
         op_label.pack(side="left", padx=4)

@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 
 from core.file_sync import sync_files
-from ui.widgets import ScrollableFrame, ProgressDialog, ResultDialog
+from ui.widgets import ScrollableFrame, ProgressDialog, ResultDialog, guard_combobox
 from ui.theme import (
     FONT_HEADING, FONT_HEADING_INPUT, BTN_ACTION,
     COLOR_FG_MUTED, RELIEF_STATUS, RELIEF_CARD, RELIEF_CARD_BD,
@@ -39,6 +39,7 @@ class TabSync(ttk.Frame):
                                            font=FONT_HEADING_INPUT)
         self._profile_combo.pack(side="left", padx=(6, 12), ipady=3)
         self._profile_combo.bind("<<ComboboxSelected>>", self._on_profile_select)
+        guard_combobox(self._profile_combo, self._profile_var)
 
         ttk.Button(profile_bar, text="+新建", command=self._new_profile).pack(side="left", padx=2)
         ttk.Button(profile_bar, text="复制", command=self._copy_profile).pack(side="left", padx=2)

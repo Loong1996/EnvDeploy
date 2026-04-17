@@ -9,6 +9,49 @@ from ui.theme import (
 )
 
 
+def guard_combobox(combo, var):
+    """防止 ttk.Combobox 在点击别处不选择时显示变空白。
+
+    Why: tkinter readonly Combobox 在某些场景下显示会变空白，
+    通过 trace 拦截 textvariable 清空，并在多个事件点强制刷新显示。
+    """
+    last = [var.get()]
+    pending = [False]
+
+    def _on_change(*_):
+        v = var.get()
+        if v:
+            last[0] = v
+            pending[0] = False
+        elif last[0] and not pending[0]:
+            pending[0] = True
+            def _restore():
+                pending[0] = False
+                if not var.get():
+                    var.set(last[0])
+            combo.after_idle(_restore)
+
+    var.trace_add("write", _on_change)
+
+    def _force_refresh(_event=None):
+        def _do():
+            val = var.get() or last[0]
+            if not val:
+                return
+            state = combo.cget("state")
+            combo.configure(state="normal")
+            combo.delete(0, "end")
+            combo.insert(0, val)
+            combo.configure(state=state)
+            try:
+                combo.selection_clear()
+            except Exception:
+                pass
+        combo.after_idle(_do)
+
+    combo.bind("<FocusOut>", _force_refresh, add="+")
+
+
 def center_window(win, parent=None):
     """将 Toplevel 窗口居中到 parent（或屏幕）。"""
     win.update_idletasks()

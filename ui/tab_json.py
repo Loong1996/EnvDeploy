@@ -3,7 +3,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
-from ui.widgets import ScrollableFrame
+from ui.widgets import ScrollableFrame, guard_combobox
 from ui.theme import COLOR_FG_INVALID, PAD_OUTER, PAD_CARD, RELIEF_STATUS, empty_label
 from core.json_manip import execute_json_rule
 
@@ -62,6 +62,7 @@ class TabJson(ttk.Frame):
                                 values=["append", "modify", "upsert", "overwrite"],
                                 state="readonly", width=15)
         op_combo.pack(side="left")
+        guard_combobox(op_combo, op_var)
 
         row3 = ttk.Frame(frame)
         row3.pack(fill="x", pady=3)

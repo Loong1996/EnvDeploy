@@ -33,6 +33,7 @@ class App:
         self.root.minsize(700, 500)
 
         apply_ttk_styles(ttk.Style())
+        self.root.unbind_class("TCombobox", "<MouseWheel>")
         self.root.configure(bg=BG_WINDOW)
 
         self.config = load_config()
