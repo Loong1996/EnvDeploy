@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 config.json
 packages/
+build/
+dist/
+Deploy
+DeployConfigTool.spec
+.claude/
