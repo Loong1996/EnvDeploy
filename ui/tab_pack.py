@@ -52,7 +52,7 @@ class TabPack(ttk.Frame):
 
         row2 = ttk.Frame(frame)
         row2.pack(fill="x", pady=3)
-        ttk.Label(row2, text="输出zip:", width=10).pack(side="left")
+        ttk.Label(row2, text="输出文件:", width=10).pack(side="left")
         output_var = tk.StringVar(value=output)
         output_entry = ttk.Entry(row2, textvariable=output_var)
         output_entry.pack(side="left", fill="x", expand=True, padx=2)
@@ -144,7 +144,8 @@ class TabPack(ttk.Frame):
     def _browse_save_zip(self, var):
         path = filedialog.asksaveasfilename(
             initialdir=get_packages_dir(),
-            defaultextension=".zip", filetypes=[("ZIP文件", "*.zip")]
+            defaultextension="",
+            filetypes=[("ZIP文件", "*.zip"), ("所有文件", "*.*")],
         )
         if path:
             var.set(self._to_relative(path))

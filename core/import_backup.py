@@ -31,12 +31,23 @@ def backup_target_dir(target_dir):
     return dest
 
 
+def backup_target_file(target_file):
+    """若 target_file 存在则移动到备份目录并返回备份路径；不存在返回 None。"""
+    if not os.path.exists(target_file):
+        return None
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    name, ext = os.path.splitext(os.path.basename(target_file))
+    dest = os.path.join(BACKUP_DIR, f"{name}_{ts}{ext}")
+    shutil.move(target_file, dest)
+    _trim_backups()
+    return dest
+
+
 def _trim_backups():
     if not os.path.isdir(BACKUP_DIR):
         return
-    entries = sorted(
-        [e for e in os.scandir(BACKUP_DIR) if e.is_dir()],
-        key=lambda e: e.stat().st_mtime,
-    )
+    entries = sorted(os.scandir(BACKUP_DIR), key=lambda e: e.stat().st_mtime)
     while len(entries) > _BACKUP_MAX:
-        shutil.rmtree(entries.pop(0).path)
+        e = entries.pop(0)
+        (shutil.rmtree if e.is_dir() else os.remove)(e.path)
