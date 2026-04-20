@@ -46,7 +46,7 @@ class TabImport(ttk.Frame):
 
         row1 = ttk.Frame(frame)
         row1.pack(fill="x", pady=3)
-        ttk.Label(row1, text="zip文件:", width=10).pack(side="left")
+        ttk.Label(row1, text="源文件:", width=10).pack(side="left")
         zip_var = tk.StringVar(value=zip_path)
         zip_entry = ttk.Entry(row1, textvariable=zip_var)
         zip_entry.pack(side="left", fill="x", expand=True, padx=2)
@@ -159,7 +159,7 @@ class TabImport(ttk.Frame):
     def _browse_open_zip(self, var):
         path = filedialog.askopenfilename(
             initialdir=get_packages_dir(),
-            filetypes=[("ZIP文件", "*.zip"), ("所有文件", "*.*")],
+            filetypes=[("所有文件", "*.*"), ("ZIP文件", "*.zip")],
         )
         if path:
             var.set(self._to_relative(path))
