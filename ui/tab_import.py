@@ -8,16 +8,20 @@ from core.folder_pack import import_folder, get_packages_dir, PACKAGES_DIR
 
 
 class TabImport(ttk.Frame):
-    def __init__(self, parent, config, save_callback):
+    def __init__(self, parent, config, save_callback, backup_var=None):
         super().__init__(parent)
         self.config = config
         self.save_callback = save_callback
         self.import_widgets = []
+        self._backup_var = backup_var
 
         btn_bar = ttk.Frame(self)
         btn_bar.pack(fill="x", padx=PAD_OUTER, pady=PAD_OUTER)
         ttk.Button(btn_bar, text="+ 添加导入规则", command=self._add_rule).pack(side="left")
         ttk.Button(btn_bar, text="全部导入", command=self._execute_all).pack(side="right")
+        if backup_var is not None:
+            ttk.Checkbutton(btn_bar, text="导入前备份目标",
+                            variable=backup_var).pack(side="right", padx=(0, 8))
 
         self.scroll = ScrollableFrame(self)
         self.scroll.pack(fill="both", expand=True, padx=PAD_OUTER)
@@ -148,9 +152,15 @@ class TabImport(ttk.Frame):
         if not zip_path or not target:
             messagebox.showerror("错误", "请填写zip文件和目标路径")
             return
-        if not messagebox.askokcancel("确认", f"将覆盖目标路径:\n{target}\n是否继续？"):
+        do_backup = self._backup_var.get() if self._backup_var is not None else False
+        if do_backup:
+            msg = f"目标路径已存在将被备份后覆盖:\n{target}\n是否继续？"
+        else:
+            msg = f"将覆盖目标路径:\n{target}\n是否继续？"
+        if not messagebox.askokcancel("确认", msg):
             return
-        self._run_with_progress("导入中...", import_folder, zip_path, target)
+        self._run_with_progress("导入中...", import_folder, zip_path, target,
+                                backup=do_backup)
 
     def _execute_all(self):
         if not self.import_widgets:
@@ -162,6 +172,7 @@ class TabImport(ttk.Frame):
         dlg = ProgressDialog(self.winfo_toplevel(), "批量导入中...")
         total_rules = len(self.import_widgets)
         self.status_var.set("执行中...")
+        do_backup = self._backup_var.get() if self._backup_var is not None else False
 
         def worker():
             results = []
@@ -172,7 +183,7 @@ class TabImport(ttk.Frame):
                                dlg.update_progress(c, t, f"{l}  {d}"))
                 try:
                     msg = import_folder(w["zip_path"].get(), w["target"].get(),
-                                        progress_callback=on_progress)
+                                        progress_callback=on_progress, backup=do_backup)
                     results.append(f"规则{rule_idx+1}: {msg}")
                 except Exception as e:
                     results.append(f"规则{rule_idx+1}: 失败 - {e}")
@@ -184,7 +195,7 @@ class TabImport(ttk.Frame):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _run_with_progress(self, title, func, *args):
+    def _run_with_progress(self, title, func, *args, **kwargs):
         dlg = ProgressDialog(self.winfo_toplevel(), title)
         self.status_var.set("执行中...")
 
@@ -193,7 +204,7 @@ class TabImport(ttk.Frame):
 
         def worker():
             try:
-                result = func(*args, progress_callback=on_progress)
+                result = func(*args, progress_callback=on_progress, **kwargs)
                 self.after(0, lambda: dlg.done())
                 self.after(0, lambda: self.status_var.set(result))
                 self.after(0, lambda: messagebox.showinfo("成功", result))

@@ -22,6 +22,7 @@ DEFAULT_CONFIG = {
     "env_rules": [],
     "sync_profiles": [],
     "ui_state": {},
+    "settings": {"backup_before_import": True},
 }
 
 
@@ -35,6 +36,8 @@ def load_config(path=None):
         for key, default in DEFAULT_CONFIG.items():
             if key not in data:
                 data[key] = default if not isinstance(default, (list, dict)) else type(default)()
+        for k, v in DEFAULT_CONFIG.get("settings", {}).items():
+            data["settings"].setdefault(k, v)
         return data
     except (json.JSONDecodeError, OSError):
         return json.loads(json.dumps(DEFAULT_CONFIG))

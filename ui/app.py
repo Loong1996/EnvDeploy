@@ -70,6 +70,16 @@ class App:
         view_menu.add_checkbutton(label="操作日志", variable=self._log_visible,
                                   command=self._toggle_log)
         menubar.add_cascade(label="查看", menu=view_menu)
+
+        self._backup_before_import = tk.BooleanVar(
+            value=self.config.get("settings", {}).get("backup_before_import", True)
+        )
+        self._backup_before_import.trace_add("write", lambda *_: self._on_setting_changed())
+        settings_menu = tk.Menu(menubar, tearoff=0)
+        settings_menu.add_checkbutton(label="导入前备份目标文件夹",
+                                      variable=self._backup_before_import)
+        menubar.add_cascade(label="设置", menu=settings_menu)
+
         self.root.config(menu=menubar)
 
         # ── 注册模块（新增工具在此加一行）────────────────────
@@ -137,7 +147,7 @@ class App:
         content.pack(side="left", fill="both", expand=True)
 
         self.tab_pack   = TabPack(content,   self.config, self._save)
-        self.tab_import = TabImport(content, self.config, self._save)
+        self.tab_import = TabImport(content, self.config, self._save, self._backup_before_import)
         self.tab_json   = TabJson(content,   self.config, self._save)
         self.tab_envvar = TabEnvVar(content, self.config, self._save)
 
@@ -248,6 +258,11 @@ class App:
 
     # ── 业务操作 ──────────────────────────────────────────────
 
+    def _on_setting_changed(self):
+        self.config.setdefault("settings", {})["backup_before_import"] = \
+            self._backup_before_import.get()
+        self._save()
+
     def _backup_config(self):
         try:
             dest = backup_config()
@@ -352,6 +367,7 @@ class App:
         chosen     = [item_meta[i] for i in selected]
         total_steps = len(chosen)
         dlg = ProgressDialog(self.root, "一键导入中...")
+        do_backup = self._backup_before_import.get()
 
         def worker():
             results = []
@@ -368,7 +384,8 @@ class App:
                 try:
                     if rtype == "import":
                         msg = import_folder(rule.get("zip_path", ""), rule.get("target", ""),
-                                            progress_callback=on_file_progress)
+                                            progress_callback=on_file_progress,
+                                            backup=do_backup)
                     elif rtype == "json":
                         msg = execute_json_rule(rule.get("filepath", ""),
                                                 rule.get("operation", ""), rule.get("data", {}))

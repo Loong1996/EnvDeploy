@@ -3,6 +3,8 @@ import shutil
 import sys
 import zipfile
 
+from core.import_backup import backup_target_dir
+
 
 def _app_dir():
     if getattr(sys, "frozen", False):
@@ -60,7 +62,7 @@ def export_folder(source, output_zip_path, progress_callback=None):
     return f"已打包 {total} 个文件到 {output_zip_path}"
 
 
-def import_folder(zip_path, target_dir, progress_callback=None):
+def import_folder(zip_path, target_dir, progress_callback=None, backup=False):
     zip_path = resolve_output_path(zip_path)
     target_dir = os.path.normpath(target_dir)
 
@@ -71,7 +73,10 @@ def import_folder(zip_path, target_dir, progress_callback=None):
         raise ValueError(f"不是有效的zip文件: {zip_path}")
 
     if os.path.exists(target_dir):
-        shutil.rmtree(target_dir)
+        if backup:
+            backup_target_dir(target_dir)
+        else:
+            shutil.rmtree(target_dir)
 
     os.makedirs(target_dir, exist_ok=True)
 
