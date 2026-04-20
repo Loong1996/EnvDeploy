@@ -86,13 +86,21 @@ class TabImport(ttk.Frame):
         self.import_widgets.append(widget_data)
 
         pkg = get_packages_dir()
+
+        def _update_rename_state(*_):
+            p = zip_var.get().strip()
+            resolved = p if os.path.isabs(p) else os.path.join(pkg, p)
+            rename_entry.configure(state="disabled" if resolved.lower().endswith(".zip") else "normal")
+
         zip_var.trace_add("write", lambda *_: self._check_path(zip_var, zip_entry, pkg))
         zip_var.trace_add("write", lambda *_: self._save())
+        zip_var.trace_add("write", _update_rename_state)
         target_var.trace_add("write", lambda *_: self._check_path(target_var, target_entry))
         target_var.trace_add("write", lambda *_: self._save())
         rename_var.trace_add("write", lambda *_: self._save())
         self._check_path(zip_var, zip_entry, pkg)
         self._check_path(target_var, target_entry)
+        _update_rename_state()
         self._save()
 
     def _check_path(self, var, entry, base_dir=None):
