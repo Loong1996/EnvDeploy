@@ -229,9 +229,10 @@ class TabImport(ttk.Frame):
                 self.after(0, lambda: self.status_var.set(result))
                 self.after(0, lambda: messagebox.showinfo("成功", result))
             except Exception as e:
+                err = str(e)
                 self.after(0, lambda: dlg.done())
-                self.after(0, lambda: self.status_var.set(f"失败: {e}"))
-                self.after(0, lambda: messagebox.showerror("错误", str(e)))
+                self.after(0, lambda: self.status_var.set(f"失败: {err}"))
+                self.after(0, lambda: messagebox.showerror("错误", err))
 
         threading.Thread(target=worker, daemon=True).start()
 
