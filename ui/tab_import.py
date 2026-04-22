@@ -103,12 +103,12 @@ class TabImport(ttk.Frame):
         zip_var.trace_add("write", lambda *_: self._check_path(zip_var, zip_entry, pkg))
         zip_var.trace_add("write", lambda *_: self._save())
         zip_var.trace_add("write", _update_rename_state)
-        target_var.trace_add("write", lambda *_: self._check_path(target_var, target_entry))
+        target_var.trace_add("write", lambda *_: self._check_target_path(target_var, target_entry))
         target_var.trace_add("write", lambda *_: self._save())
         rename_var.trace_add("write", lambda *_: self._save())
         preserve_var.trace_add("write", lambda *_: self._save())
         self._check_path(zip_var, zip_entry, pkg)
-        self._check_path(target_var, target_entry)
+        self._check_target_path(target_var, target_entry)
         _update_rename_state()
         self._save()
 
@@ -120,6 +120,14 @@ class TabImport(ttk.Frame):
         if base_dir and not os.path.isabs(p):
             p = os.path.join(base_dir, p)
         entry.configure(foreground=COLOR_FG_INVALID if not os.path.exists(p) else "")
+
+    def _check_target_path(self, var, entry):
+        p = var.get().strip()
+        if not p:
+            entry.configure(foreground="")
+            return
+        parent = os.path.dirname(os.path.normpath(p)) or "."
+        entry.configure(foreground=COLOR_FG_INVALID if not os.path.exists(parent) else "")
 
     def _remove_rule(self, frame, widget_data):
         if not messagebox.askyesno("确认", "确定删除此导入规则？"):
@@ -186,8 +194,10 @@ class TabImport(ttk.Frame):
         do_backup = self._backup_var.get() if self._backup_var is not None else False
         rename = rename_var.get().strip() if rename_var is not None else ""
         preserve = self._parse_preserve(preserve_var.get() if preserve_var else "")
-        if do_backup:
-            msg = f"目标路径已存在将被备份后覆盖:\n{target}\n是否继续？"
+        if not os.path.exists(target):
+            msg = f"将解压到新目标路径:\n{target}\n是否继续？"
+        elif do_backup:
+            msg = f"目标路径已存在，将备份后覆盖:\n{target}\n是否继续？"
         else:
             msg = f"将覆盖目标路径:\n{target}\n是否继续？"
         if not messagebox.askokcancel("确认", msg):
@@ -207,18 +217,24 @@ class TabImport(ttk.Frame):
         self.status_var.set("执行中...")
         do_backup = self._backup_var.get() if self._backup_var is not None else False
 
+        rules_data = [
+            {"zip_path": w["zip_path"].get(), "target": w["target"].get(),
+             "rename": w["rename"].get().strip(),
+             "preserve": self._parse_preserve(w["preserve"].get())}
+            for w in self.import_widgets
+        ]
+
         def worker():
             results = []
-            for rule_idx, w in enumerate(self.import_widgets):
+            for rule_idx, rule in enumerate(rules_data):
                 def on_progress(current, total, detail, ri=rule_idx):
                     label = f"规则 {ri+1}/{total_rules} - {current}/{total}"
                     self.after(0, lambda l=label, c=current, t=total, d=detail:
                                dlg.update_progress(c, t, f"{l}  {d}"))
                 try:
-                    preserve = self._parse_preserve(w["preserve"].get())
-                    msg = import_folder(w["zip_path"].get(), w["target"].get(),
+                    msg = import_folder(rule["zip_path"], rule["target"],
                                         progress_callback=on_progress, backup=do_backup,
-                                        rename=w["rename"].get().strip(), preserve=preserve)
+                                        rename=rule["rename"], preserve=rule["preserve"])
                     results.append(f"规则{rule_idx+1}: {msg}")
                 except Exception as e:
                     results.append(f"规则{rule_idx+1}: 失败 - {e}")

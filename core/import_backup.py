@@ -26,6 +26,10 @@ def backup_target_dir(target_dir):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     name = f"{os.path.basename(os.path.normpath(target_dir))}_{ts}"
     dest = os.path.join(BACKUP_DIR, name)
+    counter = 1
+    while os.path.exists(dest):
+        dest = os.path.join(BACKUP_DIR, f"{name}_{counter}")
+        counter += 1
     shutil.move(target_dir, dest)
     _trim_backups()
     return dest

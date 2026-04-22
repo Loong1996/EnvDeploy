@@ -85,11 +85,11 @@ class TabPack(ttk.Frame):
         pkg = get_packages_dir()
         source_var.trace_add("write", lambda *_: self._check_path(source_var, source_entry))
         source_var.trace_add("write", lambda *_: self._save())
-        output_var.trace_add("write", lambda *_: self._check_path(output_var, output_entry, pkg))
+        output_var.trace_add("write", lambda *_: self._check_output_path(output_var, output_entry, pkg))
         output_var.trace_add("write", lambda *_: self._save())
         excludes_var.trace_add("write", lambda *_: self._save())
         self._check_path(source_var, source_entry)
-        self._check_path(output_var, output_entry, pkg)
+        self._check_output_path(output_var, output_entry, pkg)
         self._save()
 
     def _check_path(self, var, entry, base_dir=None):
@@ -100,6 +100,16 @@ class TabPack(ttk.Frame):
         if base_dir and not os.path.isabs(p):
             p = os.path.join(base_dir, p)
         entry.configure(foreground=COLOR_FG_INVALID if not os.path.exists(p) else "")
+
+    def _check_output_path(self, var, entry, base_dir=None):
+        p = var.get().strip()
+        if not p:
+            entry.configure(foreground="")
+            return
+        if base_dir and not os.path.isabs(p):
+            p = os.path.join(base_dir, p)
+        parent = os.path.dirname(p) or "."
+        entry.configure(foreground=COLOR_FG_INVALID if not os.path.exists(parent) else "")
 
     def _remove_rule(self, frame, widget_data):
         if not messagebox.askyesno("确认", "确定删除此打包规则？"):
@@ -180,17 +190,22 @@ class TabPack(ttk.Frame):
         total_rules = len(self.export_widgets)
         self.status_var.set("执行中...")
 
+        rules_data = [
+            {"source": w["source"].get(), "output": w["output"].get(),
+             "excludes": self._parse_excludes(w["excludes"].get())}
+            for w in self.export_widgets
+        ]
+
         def worker():
             results = []
-            for rule_idx, w in enumerate(self.export_widgets):
+            for rule_idx, rule in enumerate(rules_data):
                 def on_progress(current, total, detail, ri=rule_idx):
                     label = f"规则 {ri+1}/{total_rules} - {current}/{total}"
                     self.after(0, lambda l=label, c=current, t=total, d=detail:
                                dlg.update_progress(c, t, f"{l}  {d}"))
                 try:
-                    excludes = self._parse_excludes(w["excludes"].get())
-                    msg = export_folder(w["source"].get(), w["output"].get(),
-                                        progress_callback=on_progress, excludes=excludes)
+                    msg = export_folder(rule["source"], rule["output"],
+                                        progress_callback=on_progress, excludes=rule["excludes"])
                     results.append(f"规则{rule_idx+1}: {msg}")
                 except Exception as e:
                     results.append(f"规则{rule_idx+1}: 失败 - {e}")
