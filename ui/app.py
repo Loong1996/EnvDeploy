@@ -321,7 +321,8 @@ class App:
                                     dlg.update_progress(c, t, f"{l}  {d}"))
                 try:
                     msg = export_folder(rule.get("source", ""), rule.get("output", ""),
-                                        progress_callback=on_progress)
+                                        progress_callback=on_progress,
+                                        excludes=rule.get("excludes", []))
                     results.append(f"✓ 打包规则{i+1}: {msg}")
                 except Exception as e:
                     results.append(f"✗ 打包规则{i+1}: 失败 - {e}")

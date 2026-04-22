@@ -30,10 +30,11 @@ class TabPack(ttk.Frame):
 
         self._loading = True
         for rule in self.config.get("export_rules", []):
-            self._add_rule(rule.get("source", ""), rule.get("output", ""))
+            self._add_rule(rule.get("source", ""), rule.get("output", ""),
+                           rule.get("excludes", []))
         self._loading = False
 
-    def _add_rule(self, source="", output=""):
+    def _add_rule(self, source="", output="", excludes=None):
         self._empty_label.pack_forget()
         idx = len(self.export_widgets)
         frame = ttk.LabelFrame(self.scroll.inner, text=f"打包规则 {idx + 1}", padding=8)
@@ -61,16 +62,23 @@ class TabPack(ttk.Frame):
 
         row3 = ttk.Frame(frame)
         row3.pack(fill="x", pady=3)
-        ttk.Button(row3, text="执行打包",
-                   command=lambda: self._execute_rule(source_var, output_var)).pack(side="left")
-        ttk.Button(row3, text="删除", width=6,
+        ttk.Label(row3, text="排除:", width=10).pack(side="left")
+        excludes_var = tk.StringVar(value=", ".join(excludes or []))
+        ttk.Entry(row3, textvariable=excludes_var).pack(side="left", fill="x", expand=True, padx=2)
+
+        row4 = ttk.Frame(frame)
+        row4.pack(fill="x", pady=3)
+        ttk.Button(row4, text="执行打包",
+                   command=lambda: self._execute_rule(source_var, output_var, excludes_var)).pack(side="left")
+        ttk.Button(row4, text="删除", width=6,
                    command=lambda: self._remove_rule(frame, widget_data)).pack(side="right")
-        ttk.Button(row3, text="↓", width=3,
+        ttk.Button(row4, text="↓", width=3,
                    command=lambda: self._move_rule(widget_data, 1)).pack(side="right", padx=2)
-        ttk.Button(row3, text="↑", width=3,
+        ttk.Button(row4, text="↑", width=3,
                    command=lambda: self._move_rule(widget_data, -1)).pack(side="right", padx=2)
 
         widget_data = {"frame": frame, "source": source_var, "output": output_var,
+                       "excludes": excludes_var,
                        "source_entry": source_entry, "output_entry": output_entry}
         self.export_widgets.append(widget_data)
 
@@ -79,6 +87,7 @@ class TabPack(ttk.Frame):
         source_var.trace_add("write", lambda *_: self._save())
         output_var.trace_add("write", lambda *_: self._check_path(output_var, output_entry, pkg))
         output_var.trace_add("write", lambda *_: self._save())
+        excludes_var.trace_add("write", lambda *_: self._save())
         self._check_path(source_var, source_entry)
         self._check_path(output_var, output_entry, pkg)
         self._save()
@@ -150,13 +159,15 @@ class TabPack(ttk.Frame):
         if path:
             var.set(self._to_relative(path))
 
-    def _execute_rule(self, source_var, output_var):
+    def _execute_rule(self, source_var, output_var, excludes_var=None):
         source = source_var.get().strip()
         output = output_var.get().strip()
         if not source or not output:
             messagebox.showerror("错误", "请填写源路径和输出zip路径")
             return
-        self._run_with_progress("打包中...", export_folder, source, output)
+        excludes = self._parse_excludes(excludes_var.get() if excludes_var else "")
+        self._run_with_progress("打包中...", export_folder, source, output,
+                                excludes=excludes)
 
     def _execute_all(self):
         if not self.export_widgets:
@@ -177,8 +188,9 @@ class TabPack(ttk.Frame):
                     self.after(0, lambda l=label, c=current, t=total, d=detail:
                                dlg.update_progress(c, t, f"{l}  {d}"))
                 try:
+                    excludes = self._parse_excludes(w["excludes"].get())
                     msg = export_folder(w["source"].get(), w["output"].get(),
-                                        progress_callback=on_progress)
+                                        progress_callback=on_progress, excludes=excludes)
                     results.append(f"规则{rule_idx+1}: {msg}")
                 except Exception as e:
                     results.append(f"规则{rule_idx+1}: 失败 - {e}")
@@ -190,7 +202,11 @@ class TabPack(ttk.Frame):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _run_with_progress(self, title, func, *args):
+    @staticmethod
+    def _parse_excludes(text):
+        return [p.strip() for p in text.split(",") if p.strip()]
+
+    def _run_with_progress(self, title, func, *args, **kwargs):
         dlg = ProgressDialog(self.winfo_toplevel(), title)
         self.status_var.set("执行中...")
 
@@ -199,7 +215,7 @@ class TabPack(ttk.Frame):
 
         def worker():
             try:
-                result = func(*args, progress_callback=on_progress)
+                result = func(*args, progress_callback=on_progress, **kwargs)
                 self.after(0, lambda: dlg.done())
                 self.after(0, lambda: self.status_var.set(result))
                 self.after(0, lambda: messagebox.showinfo("成功", result))
@@ -215,7 +231,8 @@ class TabPack(ttk.Frame):
         if getattr(self, '_loading', False):
             return
         self.config["export_rules"] = [
-            {"source": w["source"].get(), "output": w["output"].get()}
+            {"source": w["source"].get(), "output": w["output"].get(),
+             "excludes": self._parse_excludes(w["excludes"].get())}
             for w in self.export_widgets
         ]
         self.save_callback()

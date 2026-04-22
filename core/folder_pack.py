@@ -1,3 +1,4 @@
+import fnmatch
 import os
 import shutil
 import sys
@@ -27,19 +28,50 @@ def resolve_output_path(output_zip_path):
     return os.path.normpath(output_zip_path)
 
 
-def _collect_files(source):
+def _normalize_excludes(excludes):
+    if not excludes:
+        return []
+    return [p.strip().replace("\\", "/").rstrip("/")
+            for p in excludes if p and p.strip()]
+
+
+def _is_excluded(rel_path, name, patterns):
+    if not patterns:
+        return False
+    rel_norm = rel_path.replace("\\", "/")
+    for pat in patterns:
+        if "/" in pat:
+            if fnmatch.fnmatch(rel_norm, pat):
+                return True
+        else:
+            if fnmatch.fnmatch(name, pat):
+                return True
+    return False
+
+
+def _collect_files(source, excludes=None):
+    patterns = _normalize_excludes(excludes)
     if os.path.isfile(source):
         return [(source, os.path.basename(source))]
     files = []
     for root, dirs, filenames in os.walk(source):
+        rel_root = os.path.relpath(root, source)
+        kept_dirs = []
+        for d in dirs:
+            dir_rel = d if rel_root == "." else os.path.join(rel_root, d)
+            if not _is_excluded(dir_rel, d, patterns):
+                kept_dirs.append(d)
+        dirs[:] = kept_dirs
         for f in filenames:
             abs_path = os.path.join(root, f)
             arc_name = os.path.relpath(abs_path, source)
+            if _is_excluded(arc_name, f, patterns):
+                continue
             files.append((abs_path, arc_name))
     return files
 
 
-def export_folder(source, output_zip_path, progress_callback=None):
+def export_folder(source, output_zip_path, progress_callback=None, excludes=None):
     source = os.path.normpath(source)
     output_path = resolve_output_path(output_zip_path)
 
@@ -58,7 +90,7 @@ def export_folder(source, output_zip_path, progress_callback=None):
             progress_callback(1, 1, os.path.basename(output_path))
         return f"已复制文件到 {output_path}"
 
-    file_list = _collect_files(source)
+    file_list = _collect_files(source, excludes=excludes)
     total = len(file_list)
 
     with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
