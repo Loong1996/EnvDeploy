@@ -35,10 +35,10 @@ class TabImport(ttk.Frame):
         self._loading = True
         for rule in self.config.get("import_rules", []):
             self._add_rule(rule.get("zip_path", ""), rule.get("target", ""),
-                           rule.get("rename", ""))
+                           rule.get("rename", ""), rule.get("preserve", []))
         self._loading = False
 
-    def _add_rule(self, zip_path="", target="", rename=""):
+    def _add_rule(self, zip_path="", target="", rename="", preserve=None):
         self._empty_label.pack_forget()
         idx = len(self.import_widgets)
         frame = ttk.LabelFrame(self.scroll.inner, text=f"导入规则 {idx + 1}", padding=8)
@@ -70,10 +70,17 @@ class TabImport(ttk.Frame):
         rename_entry.pack(side="left", fill="x", expand=True, padx=2)
         ttk.Label(row_rename, text="(仅单文件，空=原名)", foreground="gray").pack(side="left", padx=(0, 4))
 
+        row_preserve = ttk.Frame(frame)
+        row_preserve.pack(fill="x", pady=3)
+        ttk.Label(row_preserve, text="保留:", width=10).pack(side="left")
+        preserve_var = tk.StringVar(value=", ".join(preserve or []))
+        ttk.Entry(row_preserve, textvariable=preserve_var).pack(side="left", fill="x", expand=True, padx=2)
+        ttk.Label(row_preserve, text="(逗号分隔 glob，清空重建时保留这些)", foreground="gray").pack(side="left", padx=(0, 4))
+
         row3 = ttk.Frame(frame)
         row3.pack(fill="x", pady=3)
         ttk.Button(row3, text="执行导入",
-                   command=lambda: self._execute_rule(zip_var, target_var, rename_var)).pack(side="left")
+                   command=lambda: self._execute_rule(zip_var, target_var, rename_var, preserve_var)).pack(side="left")
         ttk.Button(row3, text="删除", width=6,
                    command=lambda: self._remove_rule(frame, widget_data)).pack(side="right")
         ttk.Button(row3, text="↓", width=3,
@@ -82,7 +89,8 @@ class TabImport(ttk.Frame):
                    command=lambda: self._move_rule(widget_data, -1)).pack(side="right", padx=2)
 
         widget_data = {"frame": frame, "zip_path": zip_var, "target": target_var,
-                       "rename": rename_var, "zip_entry": zip_entry, "target_entry": target_entry}
+                       "rename": rename_var, "preserve": preserve_var,
+                       "zip_entry": zip_entry, "target_entry": target_entry}
         self.import_widgets.append(widget_data)
 
         pkg = get_packages_dir()
@@ -98,6 +106,7 @@ class TabImport(ttk.Frame):
         target_var.trace_add("write", lambda *_: self._check_path(target_var, target_entry))
         target_var.trace_add("write", lambda *_: self._save())
         rename_var.trace_add("write", lambda *_: self._save())
+        preserve_var.trace_add("write", lambda *_: self._save())
         self._check_path(zip_var, zip_entry, pkg)
         self._check_path(target_var, target_entry)
         _update_rename_state()
@@ -164,7 +173,11 @@ class TabImport(ttk.Frame):
         if path:
             var.set(self._to_relative(path))
 
-    def _execute_rule(self, zip_var, target_var, rename_var=None):
+    @staticmethod
+    def _parse_preserve(text):
+        return [p.strip() for p in text.split(",") if p.strip()]
+
+    def _execute_rule(self, zip_var, target_var, rename_var=None, preserve_var=None):
         zip_path = zip_var.get().strip()
         target = target_var.get().strip()
         if not zip_path or not target:
@@ -172,6 +185,7 @@ class TabImport(ttk.Frame):
             return
         do_backup = self._backup_var.get() if self._backup_var is not None else False
         rename = rename_var.get().strip() if rename_var is not None else ""
+        preserve = self._parse_preserve(preserve_var.get() if preserve_var else "")
         if do_backup:
             msg = f"目标路径已存在将被备份后覆盖:\n{target}\n是否继续？"
         else:
@@ -179,7 +193,7 @@ class TabImport(ttk.Frame):
         if not messagebox.askokcancel("确认", msg):
             return
         self._run_with_progress("导入中...", import_folder, zip_path, target,
-                                backup=do_backup, rename=rename)
+                                backup=do_backup, rename=rename, preserve=preserve)
 
     def _execute_all(self):
         if not self.import_widgets:
@@ -201,9 +215,10 @@ class TabImport(ttk.Frame):
                     self.after(0, lambda l=label, c=current, t=total, d=detail:
                                dlg.update_progress(c, t, f"{l}  {d}"))
                 try:
+                    preserve = self._parse_preserve(w["preserve"].get())
                     msg = import_folder(w["zip_path"].get(), w["target"].get(),
                                         progress_callback=on_progress, backup=do_backup,
-                                        rename=w["rename"].get().strip())
+                                        rename=w["rename"].get().strip(), preserve=preserve)
                     results.append(f"规则{rule_idx+1}: {msg}")
                 except Exception as e:
                     results.append(f"规则{rule_idx+1}: 失败 - {e}")
@@ -241,7 +256,8 @@ class TabImport(ttk.Frame):
             return
         self.config["import_rules"] = [
             {"zip_path": w["zip_path"].get(), "target": w["target"].get(),
-             "rename": w["rename"].get()}
+             "rename": w["rename"].get(),
+             "preserve": self._parse_preserve(w["preserve"].get())}
             for w in self.import_widgets
         ]
         self.save_callback()

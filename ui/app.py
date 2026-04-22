@@ -387,7 +387,8 @@ class App:
                         msg = import_folder(rule.get("zip_path", ""), rule.get("target", ""),
                                             progress_callback=on_file_progress,
                                             backup=do_backup,
-                                            rename=rule.get("rename", ""))
+                                            rename=rule.get("rename", ""),
+                                            preserve=rule.get("preserve", []))
                     elif rtype == "json":
                         msg = execute_json_rule(rule.get("filepath", ""),
                                                 rule.get("operation", ""), rule.get("data", {}))

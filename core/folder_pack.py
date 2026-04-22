@@ -2,6 +2,7 @@ import fnmatch
 import os
 import shutil
 import sys
+import tempfile
 import zipfile
 
 from core.import_backup import backup_target_dir, backup_target_file
@@ -47,6 +48,29 @@ def _is_excluded(rel_path, name, patterns):
             if fnmatch.fnmatch(name, pat):
                 return True
     return False
+
+
+def _collect_preserved(root_dir, patterns):
+    """收集 root_dir 下匹配 patterns 的文件/文件夹，返回 [(abs_path, rel_path)]。"""
+    patterns = _normalize_excludes(patterns)
+    if not patterns:
+        return []
+    result = []
+    for dirpath, dirs, files in os.walk(root_dir):
+        rel_root = os.path.relpath(dirpath, root_dir)
+        keep_walking = []
+        for d in dirs:
+            rel = d if rel_root == "." else os.path.join(rel_root, d)
+            if _is_excluded(rel, d, patterns):
+                result.append((os.path.join(dirpath, d), rel))
+            else:
+                keep_walking.append(d)
+        dirs[:] = keep_walking
+        for f in files:
+            rel = f if rel_root == "." else os.path.join(rel_root, f)
+            if _is_excluded(rel, f, patterns):
+                result.append((os.path.join(dirpath, f), rel))
+    return result
 
 
 def _collect_files(source, excludes=None):
@@ -102,7 +126,8 @@ def export_folder(source, output_zip_path, progress_callback=None, excludes=None
     return f"已打包 {total} 个文件到 {output_path}"
 
 
-def import_folder(zip_path, target_dir, progress_callback=None, backup=False, rename=""):
+def import_folder(zip_path, target_dir, progress_callback=None, backup=False, rename="",
+                  preserve=None):
     src = resolve_output_path(zip_path)
     target_dir = os.path.normpath(target_dir)
 
@@ -125,7 +150,19 @@ def import_folder(zip_path, target_dir, progress_callback=None, backup=False, re
             progress_callback(1, 1, filename)
         return f"已复制文件到 {dest}"
 
+    # 备份或保存待保留条目
+    tmp_dir = None
     if os.path.exists(target_dir):
+        preserved = _collect_preserved(target_dir, preserve) if preserve else []
+        if preserved:
+            tmp_dir = tempfile.mkdtemp()
+            for abs_path, rel_path in preserved:
+                dst = os.path.join(tmp_dir, rel_path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                if os.path.isdir(abs_path):
+                    shutil.copytree(abs_path, dst, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(abs_path, dst)
         if backup:
             backup_target_dir(target_dir)
         else:
@@ -140,5 +177,15 @@ def import_folder(zip_path, target_dir, progress_callback=None, backup=False, re
             zf.extract(member, target_dir)
             if progress_callback:
                 progress_callback(i + 1, total, member)
+
+    # 还原保留条目（覆盖 zip 同名内容）
+    if tmp_dir:
+        for dirpath, _, files in os.walk(tmp_dir):
+            rel = os.path.relpath(dirpath, tmp_dir)
+            dst_subdir = target_dir if rel == "." else os.path.join(target_dir, rel)
+            os.makedirs(dst_subdir, exist_ok=True)
+            for f in files:
+                shutil.copy2(os.path.join(dirpath, f), os.path.join(dst_subdir, f))
+        shutil.rmtree(tmp_dir)
 
     return f"已解压 {total} 个文件到 {target_dir}"
