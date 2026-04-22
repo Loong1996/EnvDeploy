@@ -180,9 +180,36 @@ class SelectionDialog(tk.Toplevel):
         tk.Button(top, text="全选", width=6, command=self._select_all,
                   bg=BG_WINDOW, fg=FG_LABEL, relief="flat", bd=1).pack(side="right")
 
-        # Checkbutton 列表区域
-        list_frame = tk.Frame(self, relief=RELIEF_LIST, bd=RELIEF_LIST_BD, bg=BG_CONTENT)
-        list_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        # 确定/取消（先 pack，确保始终显示在底部）
+        btn_row = tk.Frame(self, bg=BG_WINDOW)
+        btn_row.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+        tk.Button(btn_row, text="确定", width=8, command=self._ok,
+                  **BTN_DIALOG_OK).pack(side="right", padx=(4, 0))
+        tk.Button(btn_row, text="取消", width=8, command=self._cancel,
+                  **BTN_DIALOG_CANCEL).pack(side="right")
+
+        # 可滚动的 Checkbutton 列表区域
+        list_outer = tk.Frame(self, relief=RELIEF_LIST, bd=RELIEF_LIST_BD, bg=BG_CONTENT)
+        list_outer.pack(fill="both", expand=True, padx=10, pady=5)
+
+        canvas = tk.Canvas(list_outer, bg=BG_CONTENT, highlightthickness=0)
+        vsb = tk.Scrollbar(list_outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        list_frame = tk.Frame(canvas, bg=BG_CONTENT)
+        win_id = canvas.create_window((0, 0), window=list_frame, anchor="nw")
+
+        def _on_frame_configure(e):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _on_canvas_configure(e):
+            canvas.itemconfig(win_id, width=e.width)
+
+        list_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+        canvas.bind("<MouseWheel>", lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
 
         for i, text in enumerate(items):
             checked = self._memory.get(text, True)
@@ -194,18 +221,10 @@ class SelectionDialog(tk.Toplevel):
             cb.pack(fill="x")
             self._vars.append(var)
 
-        # 确定/取消
-        btn_row = tk.Frame(self, bg=BG_WINDOW)
-        btn_row.pack(fill="x", padx=10, pady=(0, 10))
-        tk.Button(btn_row, text="确定", width=8, command=self._ok,
-                  **BTN_DIALOG_OK).pack(side="right", padx=(4, 0))
-        tk.Button(btn_row, text="取消", width=8, command=self._cancel,
-                  **BTN_DIALOG_CANCEL).pack(side="right")
-
         row_h = 30
         list_h = min(len(items), 12) * row_h
         self.geometry(f"520x{list_h + 110}")
-        self.minsize(400, 180)
+        self.minsize(400, 200)
         self.protocol("WM_DELETE_WINDOW", self._cancel)
         self.bind("<Escape>", lambda e: self._cancel())
         center_window(self, parent)
