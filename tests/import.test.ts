@@ -85,6 +85,13 @@ describe('importExecutor', () => {
     expect(msg).toContain('已复制')
   })
 
+  it('rename 路径穿越被钳制为纯文件名', async () => {
+    write('packages/tool.bin', 'BIN')
+    await importExecutor.execute(rule({ zip: 'tool.bin', rename: '..\\..\\evil.bin' }), ctx())
+    expect(fs.existsSync(path.join(tmp, 'target', 'evil.bin'))).toBe(true)
+    expect(fs.existsSync(path.join(tmp, 'evil.bin'))).toBe(false)
+  })
+
   it('目标路径支持 ${VAR}', async () => {
     write('zipsrc/a.txt')
     await makeZip()

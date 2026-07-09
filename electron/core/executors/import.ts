@@ -66,7 +66,7 @@ export const importExecutor: RuleExecutor<ImportRule> = {
 
     // 非 zip:单文件复制
     if (!isZipFile(src)) {
-      const filename = rule.rename.trim() || path.basename(src)
+      const filename = path.basename(rule.rename.trim()) || path.basename(src)
       fs.mkdirSync(target, { recursive: true })
       const dest = path.join(target, filename)
       if (fs.existsSync(dest)) {

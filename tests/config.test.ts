@@ -47,6 +47,15 @@ describe('config', () => {
     expect(cfg.uiState).toEqual({})
   })
 
+  it('损坏的 config.json 被移到一旁并回退默认配置', () => {
+    fs.writeFileSync(configPath(tmp), '{ not valid json', 'utf8')
+    const cfg = loadConfig(tmp)
+    expect(cfg.rules.length).toBeGreaterThan(0)
+    // 坏文件被保留改名，新配置已落盘可正常解析
+    expect(fs.readdirSync(tmp).some(f => f.startsWith('config.json.corrupt-'))).toBe(true)
+    expect(() => JSON.parse(fs.readFileSync(configPath(tmp), 'utf8'))).not.toThrow()
+  })
+
   it('backup/list/restore 闭环且最多保留 10 份', () => {
     loadConfig(tmp)
     const dest = backupConfig(tmp)

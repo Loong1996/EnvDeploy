@@ -42,7 +42,15 @@ export function loadConfig(baseDir: string): AppConfig {
     saveConfig(baseDir, cfg)
     return cfg
   }
-  const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<AppConfig>
+  let raw: Partial<AppConfig>
+  try {
+    raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<AppConfig>
+  } catch {
+    fs.renameSync(file, `${file}.corrupt-${timestamp()}`)
+    const cfg = defaultConfig()
+    saveConfig(baseDir, cfg)
+    return cfg
+  }
   const def = defaultConfig()
   return {
     version: raw.version ?? def.version,
