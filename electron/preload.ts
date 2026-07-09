@@ -14,6 +14,10 @@ const api: Api = {
   pickFile: () => ipcRenderer.invoke('dialog:pick-file'),
   pickDir: () => ipcRenderer.invoke('dialog:pick-dir'),
   runRules: (ids: string[]) => ipcRenderer.invoke('rules:run', ids),
+  planRules: (ids: string[]) => ipcRenderer.invoke('rules:plan', ids),
+  exportRules: (ids: string[]) => ipcRenderer.invoke('ruleset:export', ids),
+  importRules: () => ipcRenderer.invoke('ruleset:import'),
+  importExample: () => ipcRenderer.invoke('ruleset:import-example'),
   onProgress: (cb: (p: ProgressEvent) => void) => {
     const handler = (_e: IpcRendererEvent, p: ProgressEvent): void => cb(p)
     ipcRenderer.on('rules:progress', handler)
