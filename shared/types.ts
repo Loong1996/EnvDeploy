@@ -1,4 +1,4 @@
-export type RuleType = 'pack' | 'import' | 'json' | 'env'
+export type RuleType = 'pack' | 'import' | 'json' | 'env' | 'run'
 
 export interface RuleBase {
   id: string
@@ -44,7 +44,17 @@ export interface EnvRule extends RuleBase {
   pathPosition?: PathPosition  // 仅 op=append_path 生效，缺省 'append'
 }
 
-export type Rule = PackRule | ImportRule | JsonRule | EnvRule
+export type RunShell = 'powershell' | 'cmd'
+
+export interface RunRule extends RuleBase {
+  type: 'run'
+  command: string
+  shell: RunShell
+  cwd: string
+  elevated: boolean
+}
+
+export type Rule = PackRule | ImportRule | JsonRule | EnvRule | RunRule
 
 export interface Settings {
   backupBeforeImport: boolean
