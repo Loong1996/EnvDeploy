@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import { randomUUID } from 'crypto'
 import type { AppConfig, BackupInfo } from '@shared/types'
 
 const CONFIG_FILE = 'config.json'
@@ -10,21 +9,7 @@ const MAX_BACKUPS = 10
 export function defaultConfig(): AppConfig {
   return {
     version: 1,
-    rules: [
-      {
-        id: randomUUID(), type: 'pack', name: '导出 Claude 配置', enabled: true,
-        source: '${USERPROFILE}/.claude', output: 'claude.zip',
-        excludes: ['projects', 'shell-snapshots', 'todos', 'plugins', 'session-env'],
-      },
-      {
-        id: randomUUID(), type: 'import', name: '部署 Claude 配置', enabled: true,
-        zip: 'claude.zip', target: '${USERPROFILE}/.claude', preserve: [], rename: '',
-      },
-      {
-        id: randomUUID(), type: 'env', name: 'Python 控制台 UTF-8', enabled: true,
-        key: 'PYTHONUTF8', value: '1', op: 'set',
-      },
-    ],
+    rules: [],
     settings: { backupBeforeImport: true },
     selectionMemory: { pack: {}, deploy: {} },
     uiState: {},

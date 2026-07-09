@@ -1,4 +1,4 @@
-import type { AppConfig, BackupInfo, ProgressEvent, RuleResult, RuleTypeInfo } from './types'
+import type { AppConfig, BackupInfo, ProgressEvent, RulePlan, RuleResult, RuleTypeInfo } from './types'
 
 export interface Api {
   loadConfig(): Promise<AppConfig>
@@ -11,6 +11,10 @@ export interface Api {
   pickFile(): Promise<string | null>
   pickDir(): Promise<string | null>
   runRules(ruleIds: string[]): Promise<RuleResult[]>
+  planRules(ruleIds: string[]): Promise<RulePlan[]>
+  exportRules(ruleIds: string[]): Promise<{ ok: boolean; path?: string; canceled?: boolean }>
+  importRules(): Promise<{ ok: boolean; config?: AppConfig; added?: number; canceled?: boolean; error?: string }>
+  importExample(): Promise<{ ok: boolean; config?: AppConfig; added?: number; error?: string }>
   /** 订阅执行进度,返回退订函数 */
   onProgress(cb: (p: ProgressEvent) => void): () => void
 }

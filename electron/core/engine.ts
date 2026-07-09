@@ -1,9 +1,11 @@
-import type { ProgressEvent, Rule, RuleResult, RuleTypeInfo, Settings } from '@shared/types'
+import type { ProgressEvent, Rule, RulePlan, RuleResult, RuleTypeInfo, Settings } from '@shared/types'
 import type { ExecContext, RuleExecutor } from './executor'
 import { packExecutor } from './executors/pack'
 import { importExecutor } from './executors/import'
 import { jsonExecutor } from './executors/json'
 import { envExecutor } from './executors/env'
+import { runExecutor } from './executors/run'
+import { downloadExecutor } from './executors/download'
 
 const registry = new Map<string, RuleExecutor>()
 
@@ -22,7 +24,7 @@ export function listRuleTypes(): RuleTypeInfo[] {
 }
 
 export function registerBuiltins(): void {
-  for (const ex of [packExecutor, importExecutor, jsonExecutor, envExecutor]) {
+  for (const ex of [packExecutor, importExecutor, jsonExecutor, envExecutor, runExecutor, downloadExecutor]) {
     registerExecutor(ex as unknown as RuleExecutor)
   }
 }
@@ -60,4 +62,24 @@ export async function runRules(
     }
   }
   return results
+}
+
+export async function planRules(
+  rules: Rule[],
+  opts: { baseDir: string; settings: Settings },
+): Promise<RulePlan[]> {
+  const out: RulePlan[] = []
+  for (const rule of rules) {
+    const ctx: ExecContext = { baseDir: opts.baseDir, settings: opts.settings, onProgress: () => {} }
+    try {
+      const res = await getExecutor(rule.type).plan(rule, ctx)
+      out.push({ ruleId: rule.id, name: rule.name, ok: true, noop: res.noop, changes: res.changes })
+    } catch (err) {
+      out.push({
+        ruleId: rule.id, name: rule.name, ok: false, noop: false, changes: [],
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+  return out
 }

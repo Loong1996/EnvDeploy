@@ -1,10 +1,12 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import path from 'path'
+import fs from 'fs'
 import type { AppConfig } from '@shared/types'
 import {
   backupConfig, listBackups, loadConfig, restoreConfig, saveConfig,
 } from './core/config'
-import { listRuleTypes, registerBuiltins, runRules } from './core/engine'
+import { listRuleTypes, planRules, registerBuiltins, runRules } from './core/engine'
+import { parseRuleset, serializeRuleset } from './core/ruleset'
 import { isAdmin } from './core/executors/env'
 
 registerBuiltins()
@@ -18,6 +20,7 @@ function appDir(): string {
 
 function createWindow(): void {
   const win = new BrowserWindow({
+    title: '环境部署工具',
     width: 1080,
     height: 720,
     minWidth: 860,
@@ -62,6 +65,54 @@ app.whenReady().then(() => {
     return runRules(rules, { baseDir: appDir(), settings: cfg.settings }, p => {
       e.sender.send('rules:progress', p)
     })
+  })
+
+  ipcMain.handle('rules:plan', async (_e, ruleIds: string[]) => {
+    const cfg = loadConfig(appDir())
+    const rules = ruleIds
+      .map(id => cfg.rules.find(r => r.id === id))
+      .filter((r): r is NonNullable<typeof r> => r !== undefined)
+    return planRules(rules, { baseDir: appDir(), settings: cfg.settings })
+  })
+
+  ipcMain.handle('ruleset:export', async (_e, ruleIds: string[]) => {
+    const cfg = loadConfig(appDir())
+    const rules = cfg.rules.filter(r => ruleIds.includes(r.id))
+    const r = await dialog.showSaveDialog({
+      defaultPath: 'ruleset.rules.json',
+      filters: [{ name: '规则集', extensions: ['json'] }],
+    })
+    if (r.canceled || !r.filePath) return { ok: false, canceled: true }
+    fs.writeFileSync(r.filePath, serializeRuleset(rules), 'utf8')
+    return { ok: true, path: r.filePath }
+  })
+
+  const importFrom = (file: string): { ok: boolean; config?: AppConfig; added?: number; error?: string } => {
+    try {
+      const imported = parseRuleset(fs.readFileSync(file, 'utf8'))
+      const cfg = loadConfig(appDir())
+      cfg.rules = [...cfg.rules, ...imported]
+      saveConfig(appDir(), cfg)
+      return { ok: true, config: cfg, added: imported.length }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  ipcMain.handle('ruleset:import', async () => {
+    const r = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: '规则集', extensions: ['json'] }],
+    })
+    if (r.canceled) return { ok: false, canceled: true }
+    return importFrom(r.filePaths[0])
+  })
+
+  ipcMain.handle('ruleset:import-example', () => {
+    const file = app.isPackaged
+      ? path.join(process.resourcesPath, 'examples', 'ai-coding-env.rules.json')
+      : path.join(process.cwd(), 'examples', 'ai-coding-env.rules.json')
+    return importFrom(file)
   })
 
   createWindow()

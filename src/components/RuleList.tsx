@@ -14,6 +14,8 @@ interface Props {
   onRun(id: string): void
   onToggle(id: string, enabled: boolean): void
   onMove(draggedId: string, targetId: string): void
+  onImport?(): void
+  onImportExample?(): void
 }
 
 export default function RuleList(props: Props) {
@@ -65,7 +67,18 @@ export default function RuleList(props: Props) {
         ))}
       </div>
 
-      {filtered.length === 0 && <div className="empty">暂无规则，点击右上角新建</div>}
+      {filtered.length === 0 && (
+        <div className="empty">
+          <div>暂无规则</div>
+          <div className="empty-actions">
+            {props.addTypes[0] && (
+              <button className="btn" onClick={() => props.onAdd(props.addTypes[0])}>＋ 新建规则</button>
+            )}
+            {props.onImport && <button className="btn" onClick={props.onImport}>导入规则集</button>}
+            {props.onImportExample && <button className="btn" onClick={props.onImportExample}>导入 AI 示例</button>}
+          </div>
+        </div>
+      )}
       {filtered.map(rule => (
         <RuleCard
           key={rule.id}

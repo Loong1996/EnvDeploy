@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import StreamZip from 'node-stream-zip'
-import type { ImportRule } from '@shared/types'
+import type { ImportRule, PlanChange } from '@shared/types'
 import type { RuleExecutor } from '../executor'
 import { expandVars } from '../vars'
 import { normalizePatterns } from '../match'
@@ -55,6 +55,33 @@ export const importExecutor: RuleExecutor<ImportRule> = {
     if (!rule.zip?.trim()) errs.push('源文件不能为空')
     if (!rule.target?.trim()) errs.push('目标目录不能为空')
     return errs
+  },
+
+  async plan(rule, ctx) {
+    if (/^https?:\/\//i.test(rule.zip)) throw new Error('暂不支持远程 zip 源（未来扩展）')
+    const src = resolvePackagePath(ctx.baseDir, expandVars(rule.zip))
+    const target = path.normalize(expandVars(rule.target))
+    if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error(`源文件不存在: ${src}`)
+
+    if (!isZipFile(src)) {
+      const filename = path.basename(rule.rename.trim()) || path.basename(src)
+      const dest = path.join(target, filename)
+      const changes: PlanChange[] = []
+      if (fs.existsSync(dest) && ctx.settings.backupBeforeImport) {
+        changes.push({ kind: 'delete', detail: `备份已存在文件: ${dest}` })
+      }
+      changes.push({ kind: 'create', detail: `复制文件 → ${dest}` })
+      return { noop: false, changes }
+    }
+
+    const changes: PlanChange[] = []
+    if (fs.existsSync(target)) {
+      const preserved = collectPreserved(target, normalizePatterns(rule.preserve))
+      changes.push({ kind: 'delete', detail: ctx.settings.backupBeforeImport ? `备份并清空目标目录: ${target}` : `删除目标目录: ${target}` })
+      if (preserved.length) changes.push({ kind: 'create', detail: `保留 ${preserved.length} 项` })
+    }
+    changes.push({ kind: 'create', detail: `解压导入到 ${target}` })
+    return { noop: false, changes }
   },
 
   async execute(rule, ctx) {

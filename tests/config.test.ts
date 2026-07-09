@@ -15,18 +15,17 @@ afterEach(() => {
 })
 
 describe('config', () => {
-  it('defaultConfig 带 AI 预设规则且结构完整', () => {
+  it('defaultConfig 结构完整且规则默认为空', () => {
     const cfg = defaultConfig()
     expect(cfg.version).toBe(1)
-    expect(cfg.rules.length).toBeGreaterThanOrEqual(3)
-    expect(cfg.rules.every(r => r.id && r.name && r.enabled)).toBe(true)
+    expect(cfg.rules.length).toBe(0)
     expect(cfg.settings.backupBeforeImport).toBe(true)
   })
 
   it('loadConfig 首次调用生成默认配置并落盘', () => {
     const cfg = loadConfig(tmp)
     expect(fs.existsSync(configPath(tmp))).toBe(true)
-    expect(cfg.rules.length).toBeGreaterThan(0)
+    expect(cfg.rules.length).toBe(0)
   })
 
   it('save + load 往返一致', () => {
@@ -50,14 +49,19 @@ describe('config', () => {
   it('损坏的 config.json 被移到一旁并回退默认配置', () => {
     fs.writeFileSync(configPath(tmp), '{ not valid json', 'utf8')
     const cfg = loadConfig(tmp)
-    expect(cfg.rules.length).toBeGreaterThan(0)
+    expect(cfg.rules.length).toBe(0)
     // 坏文件被保留改名，新配置已落盘可正常解析
     expect(fs.readdirSync(tmp).some(f => f.startsWith('config.json.corrupt-'))).toBe(true)
     expect(() => JSON.parse(fs.readFileSync(configPath(tmp), 'utf8'))).not.toThrow()
   })
 
   it('backup/list/restore 闭环且最多保留 10 份', () => {
-    loadConfig(tmp)
+    // 备份前写入带标记的配置,用于验证 restore 真实回读
+    const marked = loadConfig(tmp)
+    marked.rules = [
+      { id: 'marker', type: 'env', name: 'M', enabled: true, key: 'X', value: '1', op: 'set', scope: 'user' },
+    ]
+    saveConfig(tmp, marked)
     const dest = backupConfig(tmp)
     expect(fs.existsSync(dest)).toBe(true)
     expect(listBackups(tmp).length).toBe(1)
@@ -72,11 +76,12 @@ describe('config', () => {
     backupConfig(tmp)
     expect(listBackups(tmp).length).toBeLessThanOrEqual(10)
 
-    // restore 覆盖当前配置
+    // 将当前配置改成不同状态,再 restore 应回读到备份中的标记
     const cfg = loadConfig(tmp)
     cfg.rules = []
     saveConfig(tmp, cfg)
     const restored = restoreConfig(tmp, dest)
-    expect(restored.rules.length).toBeGreaterThan(0)
+    expect(restored.rules.length).toBe(1)
+    expect(restored.rules[0].id).toBe('marker')
   })
 })
