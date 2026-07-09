@@ -5,6 +5,7 @@ import RuleList from './components/RuleList'
 import RuleEditor from './components/RuleEditor'
 import SelectionDialog from './components/SelectionDialog'
 import RunOverlay from './components/RunOverlay'
+import SettingsDialog from './components/SettingsDialog'
 import { moveRule, newRule } from './utils/rules'
 
 export interface LogEntry {
@@ -186,7 +187,17 @@ export default function App() {
       {(running || results) && (
         <RunOverlay running={running} progress={progress} results={results} onClose={() => setResults(null)} />
       )}
-      {void showSettings}
+      {showSettings && (
+        <SettingsDialog
+          config={config}
+          onChangeSettings={s => update(c => ({ ...c, settings: s }))}
+          onRestore={cfg => setConfig(cfg)}
+          onLog={(summary, ok) =>
+            setLogs(l => [{ time: new Date().toLocaleString(), ok, summary, details: [] }, ...l])
+          }
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   )
 }
