@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ENV_KEY, ENV_USER_KEY, regRoot, buildReadScript, buildSetScript, buildRemoveScript,
+  ENV_KEY, ENV_USER_KEY, regRoot, isProtectedVar,
+  buildReadScript, buildWriteScript, buildDeleteScript,
   mergePath, removePath, psQuote,
 } from '../electron/core/executors/env'
 
@@ -53,25 +54,44 @@ describe('removePath', () => {
   })
 })
 
-describe('buildSetScript(root,...)', () => {
-  it('写入指定 root 并含广播', () => {
-    const s = buildSetScript(ENV_USER_KEY, 'MY_VAR', 'hello')
-    expect(s).toContain('Set-ItemProperty')
-    expect(s).toContain('-Type String')
-    expect(s).toContain(ENV_USER_KEY)
-    expect(s).toContain('SendMessageTimeout')
+describe('isProtectedVar', () => {
+  it('保护重要系统变量（大小写不敏感）', () => {
+    expect(isProtectedVar('Path')).toBe(true)
+    expect(isProtectedVar('PATH')).toBe(true)
+    expect(isProtectedVar('TEMP')).toBe(true)
+    expect(isProtectedVar('USERPROFILE')).toBe(true)
   })
-  it('含 % 用 ExpandString', () => {
-    expect(buildSetScript(ENV_KEY, 'P', '%SystemRoot%\\bin')).toContain('-Type ExpandString')
+  it('普通变量不受保护', () => {
+    expect(isProtectedVar('MY_VAR')).toBe(false)
+    expect(isProtectedVar('ENVDEPLOY_X')).toBe(false)
   })
 })
 
-describe('buildRemoveScript', () => {
-  it('用 Remove-ItemProperty 且含广播', () => {
-    const s = buildRemoveScript(ENV_USER_KEY, 'MY_VAR')
+describe('buildWriteScript', () => {
+  it('常规值用 REG_SZ 写入，并用非阻塞 SendNotifyMessage 广播（不用阻塞的 SendMessageTimeout）', () => {
+    const s = buildWriteScript('user', 'MY_VAR', 'hello')
+    expect(s).toContain('Set-ItemProperty')
+    expect(s).toContain('-Type String')
+    expect(s).toContain(ENV_USER_KEY)
+    expect(s).toContain('SendNotifyMessage')
+    expect(s).not.toContain('SendMessageTimeout')
+  })
+  it('机器级写入 HKLM root', () => {
+    expect(buildWriteScript('machine', 'MY_VAR', 'hello')).toContain(ENV_KEY)
+  })
+  it('含 % 的值用 ExpandString 保留展开语义', () => {
+    expect(buildWriteScript('user', 'P', '%SystemRoot%\\bin')).toContain('-Type ExpandString')
+  })
+})
+
+describe('buildDeleteScript', () => {
+  it('用 Remove-ItemProperty 删除并非阻塞广播', () => {
+    const s = buildDeleteScript('user', 'MY_VAR')
     expect(s).toContain('Remove-ItemProperty')
     expect(s).toContain('MY_VAR')
-    expect(s).toContain('SendMessageTimeout')
+    expect(s).toContain(ENV_USER_KEY)
+    expect(s).toContain('SendNotifyMessage')
+    expect(s).not.toContain('SendMessageTimeout')
   })
 })
 

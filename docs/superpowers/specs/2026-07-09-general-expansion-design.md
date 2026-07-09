@@ -124,8 +124,8 @@ interface RuleExecutor<T extends Rule> {
 - `scope: user` → 写 HKCU，**不需要管理员**；`scope: machine` → 写 HKLM，**需要管理员**（缺权限时明确报错并提示以管理员身份重启）。
 - `op: set`：设置/覆盖变量值（含 `%` 时用 REG_EXPAND_SZ 语义，与 v2 一致）。
 - `op: path-append`：向 PATH 追加 `value`，大小写不敏感去重；`pathPosition: prepend` 插到最前（优先生效），`append` 追加到末尾。
-- `op: remove`：`key=PATH` 时从 PATH 移除 `value` 匹配项（大小写不敏感）；否则删除整个变量。
-- 写入后广播 `WM_SETTINGCHANGE`（与 v2 一致）。
+- `op: remove`：填了 `value` → 从列表中移除该项（适用于任意变量，大小写不敏感，**不删整个变量**）；`value` 留空 → 删除整个变量，但 `PATH`/`TEMP`/`USERPROFILE` 等重要系统变量**受保护、禁止整体删除**（报错提示改用「填值移除条目」）。
+- 写入/删除后广播 `WM_SETTINGCHANGE`，效果对齐 Windows「环境变量」对话框（新开的程序即时生效、无需重启）。用异步非阻塞的 `SendNotifyMessage`，避免同步的 `SendMessageTimeout` 逐个顶层窗口等待、遇到不响应窗口时阻塞数十秒。含 `%` 的值写 REG_EXPAND_SZ 保留展开语义。
 - `plan()`：读取当前值 → 若目标状态已满足（变量已是该值 / PATH 已含该项 / 变量本就不存在待删）→ `noop:true`「无变化」；否则 `kind:'modify'|'create'|'delete'`「<key>：<旧值> → <新值>」。
 
 ## 5. dry-run 预览
