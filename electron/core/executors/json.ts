@@ -8,12 +8,15 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
 export function deepMerge(
   base: Record<string, unknown>,
   overlay: Record<string, unknown>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = { ...base }
   for (const [k, v] of Object.entries(overlay)) {
+    if (DANGEROUS_KEYS.has(k)) continue
     const cur = result[k]
     result[k] = isPlainObject(cur) && isPlainObject(v) ? deepMerge(cur, v) : v
   }

@@ -42,6 +42,12 @@ describe('deepMerge', () => {
   it('数组整体替换', () => {
     expect(deepMerge({ a: [1, 2] }, { a: [3] })).toEqual({ a: [3] })
   })
+  it('忽略原型污染键', () => {
+    const overlay = JSON.parse('{"__proto__": {"polluted": 1}, "safe": 2}') as Record<string, unknown>
+    const result = deepMerge({ a: 1 }, overlay)
+    expect(result).toEqual({ a: 1, safe: 2 })
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+  })
 })
 
 describe('jsonExecutor', () => {
