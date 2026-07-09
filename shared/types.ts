@@ -31,13 +31,17 @@ export interface JsonRule extends RuleBase {
   data: Record<string, unknown>
 }
 
-export type EnvOp = 'set' | 'append_path'
+export type EnvOp = 'set' | 'append_path' | 'remove'
+export type EnvScope = 'user' | 'machine'
+export type PathPosition = 'append' | 'prepend'
 
 export interface EnvRule extends RuleBase {
   type: 'env'
   key: string
   value: string
   op: EnvOp
+  scope?: EnvScope        // 缺省视为 'user'
+  pathPosition?: PathPosition  // 仅 op=append_path 生效，缺省 'append'
 }
 
 export type Rule = PackRule | ImportRule | JsonRule | EnvRule

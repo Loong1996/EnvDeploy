@@ -10,7 +10,7 @@ export function newRule(type: RuleType): Rule {
     case 'json':
       return { ...base, type, file: '', op: 'upsert', data: {} }
     case 'env':
-      return { ...base, type, key: '', value: '', op: 'set' }
+      return { ...base, type, key: '', value: '', op: 'set', scope: 'user', pathPosition: 'append' }
   }
 }
 
@@ -32,7 +32,11 @@ export function ruleSummary(r: Rule): string {
       return `${r.zip} → ${r.target}`
     case 'json':
       return `${r.file} (${r.op})`
-    case 'env':
-      return r.op === 'append_path' ? `${r.key} += ${r.value}` : `${r.key} = ${r.value}`
+    case 'env': {
+      const tag = r.scope === 'machine' ? '[机器]' : '[用户]'
+      if (r.op === 'remove') return `${tag} 移除 ${r.key}${r.value ? ` (${r.value})` : ''}`
+      if (r.op === 'append_path') return `${tag} ${r.key} ${r.pathPosition === 'prepend' ? '^=' : '+='} ${r.value}`
+      return `${tag} ${r.key} = ${r.value}`
+    }
   }
 }
