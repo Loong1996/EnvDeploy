@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppConfig, ProgressEvent, Rule, RuleResult, RuleTypeInfo } from '@shared/types'
 import LogsPage from './pages/LogsPage'
 import RuleList from './components/RuleList'
+import RuleEditor from './components/RuleEditor'
 import { moveRule, newRule } from './utils/rules'
 
 export interface LogEntry {
@@ -92,6 +93,14 @@ export default function App() {
       update(c => ({ ...c, rules: moveRule(c.rules, draggedId, targetId) })),
   }
 
+  const saveRule = (rule: Rule): void => {
+    update(c => {
+      const exists = c.rules.some(r => r.id === rule.id)
+      return { ...c, rules: exists ? c.rules.map(r => (r.id === rule.id ? rule : r)) : [...c.rules, rule] }
+    })
+    setEditing(null)
+  }
+
   if (!config) return <div className="loading">加载配置中…</div>
 
   return (
@@ -148,7 +157,15 @@ export default function App() {
       </div>
 
       {/* Task 13-16 在此挂载:RuleEditor / SelectionDialog / RunOverlay / SettingsDialog */}
-      {void editing}
+      {editing && (
+        <RuleEditor
+          rule={editing.rule}
+          isNew={editing.isNew}
+          typeLabel={types.find(t => t.type === editing.rule.type)?.label ?? editing.rule.type}
+          onSave={saveRule}
+          onClose={() => setEditing(null)}
+        />
+      )}
       {void selecting}
       {void running}
       {void progress}
