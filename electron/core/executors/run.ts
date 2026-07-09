@@ -24,22 +24,41 @@ function firstLine(s: string): string {
   return line.length > 80 ? line.slice(0, 80) + '…' : line
 }
 
+export function scriptBody(command: string, shell: RunShell): string {
+  if (shell === 'cmd') return `@chcp 65001 >nul\r\n${command}`   // no BOM for cmd; switch console to UTF-8
+  return `﻿${command}`                                     // UTF-8 BOM so Windows PowerShell reads UTF-8
+}
+
 function writeScript(command: string, shell: RunShell): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envdeploy-run-'))
   const file = path.join(dir, `script${scriptExt(shell)}`)
-  fs.writeFileSync(file, command, 'utf8')
+  fs.writeFileSync(file, scriptBody(command, shell), 'utf8')
   return file
 }
 
-/** 非管理员 + elevated：经 UAC 提权执行，输出重定向到文件后回读 */
-function runElevated(inv: { cmd: string; args: string[] }, cwd: string, outFile: string): number {
-  const argList = inv.args.map(a => psQuote(a)).join(', ')
-  const wd = cwd ? `-WorkingDirectory ${psQuote(cwd)} ` : ''
-  const script =
-    `$p = Start-Process -FilePath ${psQuote(inv.cmd)} -ArgumentList ${argList} ${wd}` +
-    `-Verb RunAs -Wait -PassThru -RedirectStandardOutput ${psQuote(outFile)}; exit $p.ExitCode`
+/**
+ * 非管理员 + elevated：经 UAC 提权执行。
+ * `-Verb RunAs`（ShellExecute）与 `-RedirectStandardOutput`（CreateProcess）不能同时使用，
+ * 否则 Start-Process 抛 Win32 error 87。故把重定向放进被提权的子进程内部：
+ * 写一个 wrapper.ps1，在其中用 `*>` 把子进程全部输出流重定向到文件。
+ */
+function runElevated(
+  inv: { cmd: string; args: string[] },
+  cwd: string,
+  wrapperFile: string,
+  outFile: string,
+): number {
+  const lines: string[] = []
+  if (cwd) lines.push(`Set-Location -LiteralPath ${psQuote(cwd)}`)
+  const argList = inv.args.map(a => psQuote(a)).join(' ')
+  lines.push(`& ${psQuote(inv.cmd)} ${argList} *> ${psQuote(outFile)}; exit $LASTEXITCODE`)
+  fs.writeFileSync(wrapperFile, `﻿${lines.join('\r\n')}`, 'utf8')
+  const outer =
+    `$p = Start-Process -FilePath 'powershell.exe' ` +
+    `-ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',${psQuote(wrapperFile)} ` +
+    `-Verb RunAs -Wait -PassThru; exit $p.ExitCode`
   try {
-    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: 'ignore' })
+    execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', outer], { stdio: 'ignore' })
     return 0
   } catch (e) {
     const code = (e as { status?: number }).status
@@ -73,7 +92,8 @@ export const runExecutor: RuleExecutor<RunRule> = {
     try {
       if (rule.elevated && !isAdmin()) {
         const outFile = `${scriptFile}.out`
-        const code = runElevated(inv, cwd ?? '', outFile)
+        const wrapperFile = path.join(path.dirname(scriptFile), 'elevated.ps1')
+        const code = runElevated(inv, cwd ?? '', wrapperFile, outFile)
         if (fs.existsSync(outFile)) {
           for (const line of fs.readFileSync(outFile, 'utf8').split(/\r?\n/)) {
             if (line.trim()) ctx.onProgress(1, 1, line)
@@ -85,7 +105,7 @@ export const runExecutor: RuleExecutor<RunRule> = {
       }
 
       const code = await new Promise<number>((resolve, reject) => {
-        const child = spawn(inv.cmd, inv.args, { cwd, windowsHide: true })
+        const child = spawn(inv.cmd, inv.args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
         const onData = (buf: Buffer): void => {
           for (const line of buf.toString().split(/\r?\n/)) if (line.trim()) ctx.onProgress(1, 1, line)
         }

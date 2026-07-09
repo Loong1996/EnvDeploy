@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runExecutor, shellInvocation, scriptExt } from '../electron/core/executors/run'
+import { runExecutor, shellInvocation, scriptExt, scriptBody } from '../electron/core/executors/run'
 import type { ExecContext } from '../electron/core/executor'
 
 const ctx: ExecContext = { baseDir: process.cwd(), settings: { backupBeforeImport: true }, onProgress: () => {} }
@@ -23,6 +23,19 @@ describe('shellInvocation', () => {
     const r = shellInvocation('cmd', 'C:\\t\\s.bat')
     expect(r.cmd).toBe('cmd.exe')
     expect(r.args).toEqual(['/c', 'C:\\t\\s.bat'])
+  })
+})
+
+describe('scriptBody', () => {
+  it('powershell 加 UTF-8 BOM', () => {
+    const b = scriptBody('echo 你好', 'powershell')
+    expect(b.startsWith('﻿')).toBe(true)
+    expect(b).toContain('echo 你好')
+  })
+  it('cmd 加 chcp 65001 且无 BOM', () => {
+    const b = scriptBody('echo 你好', 'cmd')
+    expect(b.startsWith('@chcp 65001')).toBe(true)
+    expect(b.startsWith('﻿')).toBe(false)
   })
 })
 
