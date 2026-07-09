@@ -1,9 +1,8 @@
-__pycache__/
-*.pyc
-config.json
-packages/
-build/
+node_modules/
+out/
+release/
 dist/
-Deploy
-DeployConfigTool.spec
-.claude/
+config.json
+config_backups/
+packages/
+*.log

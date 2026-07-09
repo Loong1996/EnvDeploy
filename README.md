@@ -1,96 +1,63 @@
-# DeployConfigTool
+# jz-aicoding-env-tool
 
-面向开发者的桌面运维小工具，基于 Python + tkinter 构建，支持打包为单文件 `.exe` 免安装使用。
+一键搭建 AI 编程环境的 Windows 桌面工具。把源机器上的 AI 编程配置（如 `~/.claude`）打包导出，在新机器上一键部署：解压配置、修改 JSON、写入系统环境变量。
 
-## 功能模块
+基于 Electron + React + TypeScript，分发为免安装的 portable 单 exe。**仅支持 Windows。**
 
-通过菜单栏「模块」可控制各模块的显示/隐藏。
+## 功能
 
-### 机器开发环境部署
+界面分三页：**打包规则**（源机器用）、**部署规则**（新机器用）、**操作日志**。
 
-左侧纵列导航，包含四个子功能：
+| 规则类型 | 作用 |
+|----------|------|
+| 打包 | 目录 → zip（支持排除通配符）；单文件直拷 |
+| 导入 | zip → 目标目录（支持保留指定文件、导入前备份、单文件重命名） |
+| JSON | 对 JSON 文件 append / modify / upsert / overwrite（嵌套深度合并，写前自动 .bak） |
+| 环境变量 | 写系统环境变量 / 追加 PATH 去重（需管理员，自动广播生效） |
 
-| 子页面 | 功能 |
-|--------|------|
-| 打包文件 | 将指定目录打包为 `.zip`，支持多规则批量执行 |
-| 导入文件 | 将 `.zip` 解压到目标目录，支持多规则批量执行 |
-| JSON操作 | 对 JSON 文件执行插入/更新/删除等操作 |
-| 环境变量 | 设置系统环境变量或追加 PATH |
+- 顶部「一键打包」「一键部署」：多选规则批量执行，记忆上次勾选
+- 规则卡片：启用开关、单条执行、拖拽排序（部署顺序）、类型筛选、关键字搜索
+- 所有路径支持 `${VAR}` 环境变量占位符（如 `${USERPROFILE}/.claude`），同一份规则跨机器通用
+- 配置备份/恢复（保留最近 10 份）
 
-顶部「一键打包」「一键导入」支持多选规则、记忆上次选择。
+## 使用
 
-### 项目配置同步
+发布目录结构（全部文件跟随 exe 所在目录）：
 
-管理多个同步方案，每个方案包含：
+```
+任意目录/
+├── jz-aicoding-env-tool-2.0.0.exe   ← 主程序
+├── config.json                      ← 首次运行自动生成
+├── packages/                        ← 打包输出 / 导入来源
+└── config_backups/                  ← 配置备份
+```
 
-- **目标工程目录**：可配置多个目标路径
-- **同步项**：文件/目录的源→目标映射列表
+典型流程：
+1. **源机器**：配好打包规则 → 一键打包 → 把 exe + config.json + packages/ 一起拷走
+2. **新机器**：以管理员身份运行 → 一键部署
 
-顶部「一键同步」支持选择目标工程后批量同步。
-
-### 时间戳转换
-
-- Unix 时间戳 → 日期时间（自动识别秒/毫秒）
-- 日期时间 → Unix 时间戳（同时输出秒和毫秒）
-- 结果支持鼠标直接选中复制
-- 一键获取当前时间
-- **设置系统时间**（需管理员权限）
-
-## 其他功能
-
-- **操作日志**：菜单「查看 → 操作日志」开启，记录所有批量操作结果
-- **配置备份/恢复**：菜单「配置管理」，自动保留最近 10 份备份
-- **界面状态记忆**：下次启动自动恢复上次所在模块和子页面
-
-## 运行
+## 开发
 
 ```bash
-# 安装依赖（无第三方依赖，仅需标准库）
-python main.py
+npm install
+npm run dev        # 开发窗口
+npm test           # 核心引擎单测（Vitest）
+npm run typecheck  # tsc --noEmit
+npm run dist       # 打包 portable exe 到 release/
 ```
 
-## 打包为 exe
-
-```bash
-pip install pyinstaller
-
-# 使用已有 spec 文件（推荐）
-pyinstaller DeployConfigTool.spec
-
-# 或重新全量打包
-pyinstaller --onefile --windowed --name "DeployConfigTool" main.py
-```
-
-打包产物在 `dist/DeployConfigTool.exe`，约 13 MB，无需安装 Python。
-
-### 分发目录结构
+## 架构
 
 ```
-发布目录/
-├── DeployConfigTool.exe   ← 主程序
-├── config.json             ← 首次运行后自动生成（用户配置）
-├── config_backups/         ← 配置备份目录（自动创建）
-└── packages/               ← 打包输出目录（首次使用后自动创建）
+electron/core/          # 纯 Node 规则引擎（不依赖 Electron，可单测/未来可 CLI 化）
+├── engine.ts           # 执行器注册表 + 批量执行
+├── executors/          # pack / import / json / env（新增动作类型在此扩展）
+├── config.ts           # 配置读写/备份
+└── ...
+electron/main.ts        # 窗口 + IPC
+electron/preload.ts     # 类型安全 window.api
+shared/                 # 主进程/渲染层共享类型
+src/                    # React 界面
 ```
 
-## 项目结构
-
-```
-├── main.py              # 入口
-├── config.py            # 配置读写 / 备份恢复
-├── core/
-│   ├── folder_pack.py   # 打包/解压逻辑
-│   ├── file_sync.py     # 文件同步逻辑
-│   ├── json_manip.py    # JSON 操作逻辑
-│   └── env_vars.py      # 环境变量操作
-└── ui/
-    ├── app.py           # 主窗口 / 模块注册
-    ├── theme.py         # 统一样式常量
-    ├── widgets.py       # 通用组件（日志面板、对话框等）
-    ├── tab_pack.py      # 打包文件页
-    ├── tab_import.py    # 导入文件页
-    ├── tab_json.py      # JSON操作页
-    ├── tab_envvar.py    # 环境变量页
-    ├── tab_sync.py      # 项目配置同步页
-    └── tab_timestamp.py # 时间戳转换页
-```
+新增规则类型 = 新写一个 executor + 注册一行 + 一个编辑表单分支，执行/进度/日志/多选记忆全部复用。

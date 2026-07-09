@@ -1,0 +1,12 @@
+appId: com.loong.jz-aicoding-env-tool
+productName: jz-aicoding-env-tool
+directories:
+  output: release
+files:
+  - out/**
+win:
+  target: portable
+portable:
+  artifactName: ${productName}-${version}.exe
+electronLanguages:
+  - zh-CN
