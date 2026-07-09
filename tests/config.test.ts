@@ -56,7 +56,12 @@ describe('config', () => {
   })
 
   it('backup/list/restore 闭环且最多保留 10 份', () => {
-    loadConfig(tmp)
+    // 备份前写入带标记的配置,用于验证 restore 真实回读
+    const marked = loadConfig(tmp)
+    marked.rules = [
+      { id: 'marker', type: 'env', name: 'M', enabled: true, key: 'X', value: '1', op: 'set', scope: 'user' },
+    ]
+    saveConfig(tmp, marked)
     const dest = backupConfig(tmp)
     expect(fs.existsSync(dest)).toBe(true)
     expect(listBackups(tmp).length).toBe(1)
@@ -71,11 +76,12 @@ describe('config', () => {
     backupConfig(tmp)
     expect(listBackups(tmp).length).toBeLessThanOrEqual(10)
 
-    // restore 覆盖当前配置
+    // 将当前配置改成不同状态,再 restore 应回读到备份中的标记
     const cfg = loadConfig(tmp)
     cfg.rules = []
     saveConfig(tmp, cfg)
     const restored = restoreConfig(tmp, dest)
-    expect(restored.rules.length).toBe(0)
+    expect(restored.rules.length).toBe(1)
+    expect(restored.rules[0].id).toBe('marker')
   })
 })
