@@ -13,6 +13,7 @@ const okExecutor: RuleExecutor = {
   type: 'fake-ok' as never,
   label: '假成功',
   validate: () => [],
+  plan: async () => ({ noop: true, changes: [] }),
   execute: async (_r, ctx) => {
     ctx.onProgress(1, 1, 'done')
     return '成功'
@@ -23,6 +24,9 @@ const failExecutor: RuleExecutor = {
   type: 'fake-fail' as never,
   label: '假失败',
   validate: () => ['总是错'],
+  plan: async () => {
+    throw new Error('炸了')
+  },
   execute: async () => {
     throw new Error('炸了')
   },

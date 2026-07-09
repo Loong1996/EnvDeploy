@@ -68,6 +68,27 @@ export interface RuleResult {
   message: string
 }
 
+export type PlanChangeKind = 'create' | 'modify' | 'delete' | 'run' | 'download' | 'noop'
+
+export interface PlanChange {
+  kind: PlanChangeKind
+  detail: string
+}
+
+export interface PlanResult {
+  noop: boolean
+  changes: PlanChange[]
+}
+
+export interface RulePlan {
+  ruleId: string
+  name: string
+  ok: boolean
+  noop: boolean
+  changes: PlanChange[]
+  error?: string
+}
+
 export interface ProgressEvent {
   ruleIndex: number
   ruleCount: number

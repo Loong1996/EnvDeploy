@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import type { JsonRule } from '@shared/types'
+import type { JsonRule, PlanChange } from '@shared/types'
 import type { RuleExecutor } from '../executor'
 import { expandVars } from '../vars'
 
@@ -32,6 +32,37 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
     if (!rule.file?.trim()) errs.push('文件路径不能为空')
     if (!isPlainObject(rule.data)) errs.push('数据必须是 JSON 对象')
     return errs
+  },
+
+  async plan(rule) {
+    const filepath = path.normalize(expandVars(rule.file))
+    const data = rule.data
+    if (!isPlainObject(data)) return { noop: false, changes: [{ kind: 'modify', detail: '数据不是对象' }] }
+    if (rule.op === 'overwrite') {
+      const exists = fs.existsSync(filepath)
+      return { noop: false, changes: [{ kind: exists ? 'modify' : 'create', detail: `全量写入 ${filepath}` }] }
+    }
+    if (!fs.existsSync(filepath)) throw new Error(`文件不存在: ${filepath}`)
+    const existing: unknown = JSON.parse(fs.readFileSync(filepath, 'utf8'))
+    if (!isPlainObject(existing)) throw new Error(`JSON 文件顶层不是对象: ${filepath}`)
+    if (rule.op === 'append') {
+      const conflicts = Object.keys(data).filter(k => k in existing)
+      if (conflicts.length) throw new Error(`以下 key 已存在，无法追加: ${conflicts.join(', ')}`)
+    } else if (rule.op === 'modify') {
+      const missing = Object.keys(data).filter(k => !(k in existing))
+      if (missing.length) throw new Error(`以下 key 不存在，无法修改: ${missing.join(', ')}`)
+    }
+    const merged = deepMerge(existing, data)
+    if (JSON.stringify(merged) === JSON.stringify(existing)) {
+      return { noop: true, changes: [{ kind: 'noop', detail: '已是目标状态，无变化' }] }
+    }
+    return {
+      noop: false,
+      changes: Object.keys(data).map(k => ({
+        kind: (k in existing ? 'modify' : 'create') as PlanChange['kind'],
+        detail: `${k}`,
+      })),
+    }
   },
 
   async execute(rule, ctx) {

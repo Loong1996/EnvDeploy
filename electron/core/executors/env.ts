@@ -84,6 +84,35 @@ export const envExecutor: RuleExecutor<EnvRule> = {
     return errs
   },
 
+  async plan(rule) {
+    const key = rule.key.trim()
+    const scope: EnvScope = rule.scope ?? 'user'
+    const root = regRoot(scope)
+    const value = expandVars(rule.value)
+    const current = runPs(buildReadScript(root, key))
+
+    if (rule.op === 'append_path') {
+      const merged = mergePath(current, value, rule.pathPosition ?? 'append')
+      return merged.changed
+        ? { noop: false, changes: [{ kind: 'modify', detail: `${key} += ${value}` }] }
+        : { noop: true, changes: [{ kind: 'noop', detail: `${key} 已包含 ${value}` }] }
+    }
+    if (rule.op === 'remove') {
+      if (isPathKey(key)) {
+        const r = removePath(current, value)
+        return r.changed
+          ? { noop: false, changes: [{ kind: 'modify', detail: `${key} -= ${value}` }] }
+          : { noop: true, changes: [{ kind: 'noop', detail: `${key} 不含 ${value}` }] }
+      }
+      return current
+        ? { noop: false, changes: [{ kind: 'delete', detail: `删除变量 ${key}` }] }
+        : { noop: true, changes: [{ kind: 'noop', detail: `${key} 不存在` }] }
+    }
+    return current === value
+      ? { noop: true, changes: [{ kind: 'noop', detail: `${key} 已是 ${value}` }] }
+      : { noop: false, changes: [{ kind: current ? 'modify' : 'create', detail: `${key}: ${current || '(空)'} → ${value}` }] }
+  },
+
   async execute(rule, ctx) {
     const scope: EnvScope = rule.scope ?? 'user'
     if (scope === 'machine' && !isAdmin())

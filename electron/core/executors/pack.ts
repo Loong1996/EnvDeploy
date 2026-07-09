@@ -19,6 +19,19 @@ export const packExecutor: RuleExecutor<PackRule> = {
     return errs
   },
 
+  async plan(rule, ctx) {
+    const source = path.normalize(expandVars(rule.source))
+    const output = resolvePackagePath(ctx.baseDir, expandVars(rule.output))
+    if (!fs.existsSync(source)) throw new Error(`源路径不存在: ${source}`)
+    if (!output.toLowerCase().endsWith('.zip')) {
+      return { noop: false, changes: [{ kind: 'create', detail: `复制文件 → ${output}` }] }
+    }
+    const files = fs.statSync(source).isFile()
+      ? [{ abs: source, rel: path.basename(source) }]
+      : collectFiles(source, normalizePatterns(rule.excludes))
+    return { noop: false, changes: [{ kind: 'create', detail: `打包 ${files.length} 个文件 → ${output}` }] }
+  },
+
   async execute(rule, ctx) {
     const source = path.normalize(expandVars(rule.source))
     const output = resolvePackagePath(ctx.baseDir, expandVars(rule.output))
