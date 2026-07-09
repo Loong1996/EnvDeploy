@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppConfig, ProgressEvent, Rule, RuleResult, RuleTypeInfo } from '@shared/types'
 import LogsPage from './pages/LogsPage'
+import RuleList from './components/RuleList'
+import { moveRule, newRule } from './utils/rules'
 
 export interface LogEntry {
   time: string
@@ -77,6 +79,19 @@ export default function App() {
     }
   }, [])
 
+  const listCallbacks = {
+    onAdd: (type: import('@shared/types').RuleType) => setEditing({ rule: newRule(type), isNew: true }),
+    onEdit: (rule: Rule) => setEditing({ rule, isNew: false }),
+    onDelete: (id: string) => {
+      if (confirm('确定删除该规则？')) update(c => ({ ...c, rules: c.rules.filter(r => r.id !== id) }))
+    },
+    onRun: (id: string) => void runIds([id]),
+    onToggle: (id: string, enabled: boolean) =>
+      update(c => ({ ...c, rules: c.rules.map(r => (r.id === id ? { ...r, enabled } : r)) })),
+    onMove: (draggedId: string, targetId: string) =>
+      update(c => ({ ...c, rules: moveRule(c.rules, draggedId, targetId) })),
+  }
+
   if (!config) return <div className="loading">加载配置中…</div>
 
   return (
@@ -110,8 +125,24 @@ export default function App() {
         </nav>
 
         <main className="content">
-          {page === 'pack' && <div className="empty">打包规则列表（Task 13 实现）共 {packRules.length} 条</div>}
-          {page === 'deploy' && <div className="empty">部署规则列表（Task 13 实现）共 {deployRules.length} 条</div>}
+          {page === 'pack' && (
+            <RuleList
+              rules={packRules}
+              types={types.filter(t => t.type === 'pack')}
+              showTypeFilter={false}
+              addTypes={['pack']}
+              {...listCallbacks}
+            />
+          )}
+          {page === 'deploy' && (
+            <RuleList
+              rules={deployRules}
+              types={types.filter(t => t.type !== 'pack')}
+              showTypeFilter
+              addTypes={['import', 'json', 'env']}
+              {...listCallbacks}
+            />
+          )}
           {page === 'logs' && <LogsPage logs={logs} />}
         </main>
       </div>
@@ -123,8 +154,6 @@ export default function App() {
       {void progress}
       {void results}
       {void showSettings}
-      {void types}
-      {void runIds}
     </div>
   )
 }
