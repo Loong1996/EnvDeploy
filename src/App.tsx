@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { AppConfig, ProgressEvent, Rule, RuleResult, RuleTypeInfo } from '@shared/types'
+import type { AppConfig, ProgressEvent, Rule, RulePlan, RuleResult, RuleTypeInfo } from '@shared/types'
 import LogsPage from './pages/LogsPage'
 import RuleList from './components/RuleList'
 import RuleEditor from './components/RuleEditor'
 import SelectionDialog from './components/SelectionDialog'
+import PreviewDialog from './components/PreviewDialog'
 import RunOverlay from './components/RunOverlay'
 import SettingsDialog from './components/SettingsDialog'
 import { moveRule, newRule } from './utils/rules'
@@ -23,7 +24,8 @@ export default function App() {
   const [admin, setAdmin] = useState(true)
   const [page, setPage] = useState<Page>('pack')
   const [editing, setEditing] = useState<{ rule: Rule; isNew: boolean } | null>(null)
-  const [selecting, setSelecting] = useState<'pack' | 'deploy' | null>(null)
+  const [selecting, setSelecting] = useState<'pack' | 'deploy' | 'preview' | null>(null)
+  const [preview, setPreview] = useState<{ ids: string[]; plans: RulePlan[] } | null>(null)
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<ProgressEvent | null>(null)
   const [results, setResults] = useState<RuleResult[] | null>(null)
@@ -110,6 +112,14 @@ export default function App() {
     void runIds(ids)
   }
 
+  const doPreview = async (ids: string[], memory: Record<string, boolean>): Promise<void> => {
+    setSelecting(null)
+    update(c => ({ ...c, selectionMemory: { ...c.selectionMemory, deploy: memory } }))
+    if (!ids.length) return
+    const plans = await window.api.planRules(ids)
+    setPreview({ ids, plans })
+  }
+
   if (!config) return <div className="loading">加载配置中…</div>
 
   return (
@@ -118,6 +128,7 @@ export default function App() {
         <div className="brand">🧩 环境部署工具</div>
         <button className="hero hero-pack" onClick={() => setSelecting('pack')}>一键打包</button>
         <button className="hero hero-deploy" onClick={() => setSelecting('deploy')}>一键部署</button>
+        <button className="hero hero-preview" onClick={() => setSelecting('preview')}>预览</button>
         <div className="spacer" />
         {!admin && (
           <span className="admin-warn" title="修改系统环境变量需要管理员权限，请以管理员身份重新运行">
@@ -177,11 +188,20 @@ export default function App() {
       )}
       {selecting && (
         <SelectionDialog
-          title={selecting === 'pack' ? '选择要打包的规则' : '选择要部署的规则'}
+          title={selecting === 'pack' ? '选择要打包的规则' : selecting === 'preview' ? '选择要预览的规则' : '选择要部署的规则'}
           rules={(selecting === 'pack' ? packRules : deployRules).filter(r => r.enabled)}
-          memory={config.selectionMemory[selecting]}
-          onConfirm={(ids, memory) => confirmSelection(selecting, ids, memory)}
+          memory={config.selectionMemory[selecting === 'pack' ? 'pack' : 'deploy']}
+          onConfirm={(ids, memory) =>
+            selecting === 'preview' ? void doPreview(ids, memory)
+              : confirmSelection(selecting === 'pack' ? 'pack' : 'deploy', ids, memory)}
           onCancel={() => setSelecting(null)}
+        />
+      )}
+      {preview && (
+        <PreviewDialog
+          plans={preview.plans}
+          onConfirm={() => { const ids = preview.ids; setPreview(null); void runIds(ids) }}
+          onCancel={() => setPreview(null)}
         />
       )}
       {(running || results) && (
