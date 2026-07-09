@@ -47,6 +47,7 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .spacer { flex: 1; }
 .dim { color: var(--text-dim); }
 .empty { color: var(--text-dim); text-align: center; padding: 48px 0; }
+.empty-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
 .loading { color: var(--text-dim); text-align: center; padding-top: 40vh; }
 
 /* ── 顶栏 ─────────────────────────────────────────── */

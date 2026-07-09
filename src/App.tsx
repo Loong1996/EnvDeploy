@@ -24,7 +24,7 @@ export default function App() {
   const [admin, setAdmin] = useState(true)
   const [page, setPage] = useState<Page>('pack')
   const [editing, setEditing] = useState<{ rule: Rule; isNew: boolean } | null>(null)
-  const [selecting, setSelecting] = useState<'pack' | 'deploy' | 'preview' | null>(null)
+  const [selecting, setSelecting] = useState<'pack' | 'deploy' | 'preview' | 'export' | null>(null)
   const [preview, setPreview] = useState<{ ids: string[]; plans: RulePlan[] } | null>(null)
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<ProgressEvent | null>(null)
@@ -120,6 +120,27 @@ export default function App() {
     setPreview({ ids, plans })
   }
 
+  const applyImportResult = (r: { ok: boolean; config?: AppConfig; added?: number; canceled?: boolean; error?: string }): void => {
+    if (r.canceled) return
+    if (r.ok && r.config) {
+      setConfig(r.config)
+      setLogs(l => [{ time: new Date().toLocaleString(), ok: true, summary: `已导入 ${r.added ?? 0} 条规则`, details: [] }, ...l])
+    } else {
+      setLogs(l => [{ time: new Date().toLocaleString(), ok: false, summary: `导入失败: ${r.error ?? '未知错误'}`, details: [] }, ...l])
+    }
+  }
+
+  const doImport = async (): Promise<void> => { applyImportResult(await window.api.importRules()) }
+  const doImportExample = async (): Promise<void> => { applyImportResult(await window.api.importExample()) }
+
+  const doExport = async (ids: string[], memory: Record<string, boolean>): Promise<void> => {
+    setSelecting(null)
+    update(c => ({ ...c, selectionMemory: { ...c.selectionMemory, deploy: memory } }))
+    if (!ids.length) return
+    const r = await window.api.exportRules(ids)
+    if (r.ok) setLogs(l => [{ time: new Date().toLocaleString(), ok: true, summary: `已导出到 ${r.path}`, details: [] }, ...l])
+  }
+
   if (!config) return <div className="loading">加载配置中…</div>
 
   return (
@@ -135,6 +156,8 @@ export default function App() {
             ⚠ 非管理员
           </span>
         )}
+        <button className="icon-btn" title="导入规则集" onClick={() => void doImport()}>⬇</button>
+        <button className="icon-btn" title="导出规则集" onClick={() => setSelecting('export')}>⬆</button>
         <button className="icon-btn" title="设置" onClick={() => setShowSettings(true)}>⚙</button>
       </header>
 
@@ -160,6 +183,7 @@ export default function App() {
               types={types.filter(t => t.type === 'pack')}
               showTypeFilter={false}
               addTypes={['pack']}
+              onImport={() => void doImport()}
               {...listCallbacks}
             />
           )}
@@ -169,6 +193,8 @@ export default function App() {
               types={types.filter(t => t.type !== 'pack')}
               showTypeFilter
               addTypes={['import', 'json', 'env', 'run', 'download']}
+              onImport={() => void doImport()}
+              onImportExample={() => void doImportExample()}
               {...listCallbacks}
             />
           )}
@@ -188,12 +214,22 @@ export default function App() {
       )}
       {selecting && (
         <SelectionDialog
-          title={selecting === 'pack' ? '选择要打包的规则' : selecting === 'preview' ? '选择要预览的规则' : '选择要部署的规则'}
-          rules={(selecting === 'pack' ? packRules : deployRules).filter(r => r.enabled)}
+          title={
+            selecting === 'pack' ? '选择要打包的规则'
+              : selecting === 'preview' ? '选择要预览的规则'
+              : selecting === 'export' ? '选择要导出的规则'
+              : '选择要部署的规则'
+          }
+          rules={
+            selecting === 'export' ? config.rules
+              : (selecting === 'pack' ? packRules : deployRules).filter(r => r.enabled)
+          }
           memory={config.selectionMemory[selecting === 'pack' ? 'pack' : 'deploy']}
-          onConfirm={(ids, memory) =>
-            selecting === 'preview' ? void doPreview(ids, memory)
-              : confirmSelection(selecting === 'pack' ? 'pack' : 'deploy', ids, memory)}
+          onConfirm={(ids, memory) => {
+            if (selecting === 'preview') return void doPreview(ids, memory)
+            if (selecting === 'export') return void doExport(ids, memory)
+            confirmSelection(selecting === 'pack' ? 'pack' : 'deploy', ids, memory)
+          }}
           onCancel={() => setSelecting(null)}
         />
       )}
