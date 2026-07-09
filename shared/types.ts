@@ -1,4 +1,4 @@
-export type RuleType = 'pack' | 'import' | 'json' | 'env' | 'run'
+export type RuleType = 'pack' | 'import' | 'json' | 'env' | 'run' | 'download'
 
 export interface RuleBase {
   id: string
@@ -54,7 +54,14 @@ export interface RunRule extends RuleBase {
   elevated: boolean
 }
 
-export type Rule = PackRule | ImportRule | JsonRule | EnvRule | RunRule
+export interface DownloadRule extends RuleBase {
+  type: 'download'
+  url: string
+  target: string
+  overwrite: boolean
+}
+
+export type Rule = PackRule | ImportRule | JsonRule | EnvRule | RunRule | DownloadRule
 
 export interface Settings {
   backupBeforeImport: boolean

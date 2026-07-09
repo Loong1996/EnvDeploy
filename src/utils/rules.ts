@@ -13,6 +13,8 @@ export function newRule(type: RuleType): Rule {
       return { ...base, type, key: '', value: '', op: 'set', scope: 'user', pathPosition: 'append' }
     case 'run':
       return { ...base, type, command: '', shell: 'powershell', cwd: '', elevated: false }
+    case 'download':
+      return { ...base, type, url: '', target: '', overwrite: false }
   }
 }
 
@@ -44,5 +46,7 @@ export function ruleSummary(r: Rule): string {
       const head = r.command.split(/\r?\n/).find(l => l.trim()) ?? '(空命令)'
       return `${r.shell}${r.elevated ? '·管理员' : ''}: ${head}`
     }
+    case 'download':
+      return `${r.url} → ${r.target}`
   }
 }

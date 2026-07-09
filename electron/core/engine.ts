@@ -5,6 +5,7 @@ import { importExecutor } from './executors/import'
 import { jsonExecutor } from './executors/json'
 import { envExecutor } from './executors/env'
 import { runExecutor } from './executors/run'
+import { downloadExecutor } from './executors/download'
 
 const registry = new Map<string, RuleExecutor>()
 
@@ -23,7 +24,7 @@ export function listRuleTypes(): RuleTypeInfo[] {
 }
 
 export function registerBuiltins(): void {
-  for (const ex of [packExecutor, importExecutor, jsonExecutor, envExecutor, runExecutor]) {
+  for (const ex of [packExecutor, importExecutor, jsonExecutor, envExecutor, runExecutor, downloadExecutor]) {
     registerExecutor(ex as unknown as RuleExecutor)
   }
 }
