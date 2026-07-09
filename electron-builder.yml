@@ -1,9 +1,11 @@
-appId: com.loong.jz-aicoding-env-tool
-productName: jz-aicoding-env-tool
+appId: com.loong.envdeploy
+productName: EnvDeploy
 directories:
   output: release
 files:
   - out/**
+extraResources:
+  - examples/**
 win:
   target: portable
 portable:

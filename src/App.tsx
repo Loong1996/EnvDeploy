@@ -115,7 +115,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">⚡ AI 编程环境部署</div>
+        <div className="brand">🧩 环境部署工具</div>
         <button className="hero hero-pack" onClick={() => setSelecting('pack')}>一键打包</button>
         <button className="hero hero-deploy" onClick={() => setSelecting('deploy')}>一键部署</button>
         <div className="spacer" />

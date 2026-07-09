@@ -18,6 +18,7 @@ function appDir(): string {
 
 function createWindow(): void {
   const win = new BrowserWindow({
+    title: '环境部署工具',
     width: 1080,
     height: 720,
     minWidth: 860,

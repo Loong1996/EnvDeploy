@@ -1,7 +1,7 @@
 {
   "name": "jz-aicoding-env-tool",
   "version": "2.0.0",
-  "description": "一键搭建 AI 编程环境的桌面工具",
+  "description": "通用环境部署工具（EnvDeploy）",
   "main": "out/main/index.js",
   "author": "Loong",
   "license": "MIT",

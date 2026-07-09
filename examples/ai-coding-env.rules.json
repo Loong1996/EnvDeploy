@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "rules": [
+    { "type": "pack", "name": "导出 Claude 配置", "enabled": true, "source": "${USERPROFILE}/.claude", "output": "claude.zip", "excludes": ["projects", "shell-snapshots", "todos", "plugins", "session-env"] },
+    { "type": "import", "name": "部署 Claude 配置", "enabled": true, "zip": "claude.zip", "target": "${USERPROFILE}/.claude", "preserve": [], "rename": "" },
+    { "type": "env", "name": "Python 控制台 UTF-8", "enabled": true, "key": "PYTHONUTF8", "value": "1", "op": "set", "scope": "user" }
+  ]
+}
