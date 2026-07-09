@@ -3,6 +3,8 @@ import type { AppConfig, ProgressEvent, Rule, RuleResult, RuleTypeInfo } from '@
 import LogsPage from './pages/LogsPage'
 import RuleList from './components/RuleList'
 import RuleEditor from './components/RuleEditor'
+import SelectionDialog from './components/SelectionDialog'
+import RunOverlay from './components/RunOverlay'
 import { moveRule, newRule } from './utils/rules'
 
 export interface LogEntry {
@@ -101,6 +103,12 @@ export default function App() {
     setEditing(null)
   }
 
+  const confirmSelection = (kind: 'pack' | 'deploy', ids: string[], memory: Record<string, boolean>): void => {
+    setSelecting(null)
+    update(c => ({ ...c, selectionMemory: { ...c.selectionMemory, [kind]: memory } }))
+    void runIds(ids)
+  }
+
   if (!config) return <div className="loading">加载配置中…</div>
 
   return (
@@ -166,10 +174,18 @@ export default function App() {
           onClose={() => setEditing(null)}
         />
       )}
-      {void selecting}
-      {void running}
-      {void progress}
-      {void results}
+      {selecting && (
+        <SelectionDialog
+          title={selecting === 'pack' ? '选择要打包的规则' : '选择要部署的规则'}
+          rules={(selecting === 'pack' ? packRules : deployRules).filter(r => r.enabled)}
+          memory={config.selectionMemory[selecting]}
+          onConfirm={(ids, memory) => confirmSelection(selecting, ids, memory)}
+          onCancel={() => setSelecting(null)}
+        />
+      )}
+      {(running || results) && (
+        <RunOverlay running={running} progress={progress} results={results} onClose={() => setResults(null)} />
+      )}
       {void showSettings}
     </div>
   )
