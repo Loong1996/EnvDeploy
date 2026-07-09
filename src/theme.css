@@ -176,6 +176,8 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .badge-import { background: var(--badge-import); }
 .badge-json { background: var(--badge-json); color: #1a1a1a; }
 .badge-env { background: var(--badge-env); }
+.badge-run { background: #7c3aed33; color: #c4b5fd; }
+.badge-download { background: #0891b233; color: #67e8f9; }
 
 /* ── 开关 ─────────────────────────────────────────── */
 .switch { position: relative; width: 36px; height: 20px; display: inline-block; }

@@ -157,7 +157,7 @@ export default function App() {
               rules={deployRules}
               types={types.filter(t => t.type !== 'pack')}
               showTypeFilter
-              addTypes={['import', 'json', 'env']}
+              addTypes={['import', 'json', 'env', 'run', 'download']}
               {...listCallbacks}
             />
           )}

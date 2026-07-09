@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import type { EnvOp, JsonOp, Rule } from '@shared/types'
+import type { EnvOp, EnvScope, JsonOp, PathPosition, Rule, RunShell } from '@shared/types'
 import Modal from './Modal'
 import TagInput from './TagInput'
 
@@ -73,6 +73,14 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
       }
       case 'env':
         if (!final.key.trim()) errs.push('变量名不能为空')
+        break
+      case 'run':
+        if (!final.command.trim()) errs.push('命令不能为空')
+        break
+      case 'download':
+        if (!final.url.trim()) errs.push('下载地址不能为空')
+        else if (!/^https?:\/\//i.test(final.url.trim())) errs.push('仅支持 http/https 地址')
+        if (!final.target.trim()) errs.push('保存路径不能为空')
         break
     }
     if (errs.length) {
@@ -150,6 +158,12 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
 
       {draft.type === 'env' && (
         <>
+          <Field label="作用域">
+            <select value={draft.scope ?? 'user'} onChange={e => patch({ scope: e.target.value as EnvScope })}>
+              <option value="user">用户级（HKCU，免管理员）</option>
+              <option value="machine">机器级（HKLM，需管理员）</option>
+            </select>
+          </Field>
           <Field label="变量名">
             <input value={draft.key} placeholder="PYTHONUTF8 / Path" onChange={e => patch({ key: e.target.value })} />
           </Field>
@@ -160,8 +174,53 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
             <select value={draft.op} onChange={e => patch({ op: e.target.value as EnvOp })}>
               <option value="set">set — 直接设置变量值</option>
               <option value="append_path">append_path — 追加到分号分隔列表（自动去重）</option>
+              <option value="remove">remove — 删除变量 / 从 PATH 移除该值</option>
             </select>
           </Field>
+          {draft.op === 'append_path' && (
+            <Field label="插入位置">
+              <select value={draft.pathPosition ?? 'append'} onChange={e => patch({ pathPosition: e.target.value as PathPosition })}>
+                <option value="append">追加到末尾</option>
+                <option value="prepend">插入到最前（优先生效）</option>
+              </select>
+            </Field>
+          )}
+        </>
+      )}
+
+      {draft.type === 'run' && (
+        <>
+          <Field label="Shell">
+            <select value={draft.shell} onChange={e => patch({ shell: e.target.value as RunShell })}>
+              <option value="powershell">PowerShell</option>
+              <option value="cmd">CMD</option>
+            </select>
+          </Field>
+          <Field label="命令（多行脚本，支持 ${VAR} 环境变量）">
+            <textarea rows={8} value={draft.command} spellCheck={false} onChange={e => patch({ command: e.target.value })} />
+          </Field>
+          <Field label="工作目录（可选，支持 ${VAR}）">
+            <PathRow value={draft.cwd} onChange={v => patch({ cwd: v })} pick="dir" />
+          </Field>
+          <label className="check-item">
+            <input type="checkbox" checked={draft.elevated} onChange={e => patch({ elevated: e.target.checked })} />
+            <span>以管理员身份运行（非管理员时会弹 UAC）</span>
+          </label>
+        </>
+      )}
+
+      {draft.type === 'download' && (
+        <>
+          <Field label="下载地址（http/https）">
+            <input value={draft.url} placeholder="https://example.com/tool.zip" onChange={e => patch({ url: e.target.value })} />
+          </Field>
+          <Field label="保存到（支持 ${VAR} 环境变量）">
+            <PathRow value={draft.target} onChange={v => patch({ target: v })} pick="file" placeholder="${USERPROFILE}/Downloads/tool.zip" />
+          </Field>
+          <label className="check-item">
+            <input type="checkbox" checked={draft.overwrite} onChange={e => patch({ overwrite: e.target.checked })} />
+            <span>已存在时覆盖重新下载</span>
+          </label>
         </>
       )}
 
