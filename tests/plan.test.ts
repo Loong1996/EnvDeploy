@@ -4,6 +4,7 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { jsonExecutor } from '../electron/core/executors/json'
 import { packExecutor } from '../electron/core/executors/pack'
+import { importExecutor } from '../electron/core/executors/import'
 import type { ExecContext } from '../electron/core/executor'
 
 const ctx: ExecContext = { baseDir: process.cwd(), settings: { backupBeforeImport: true }, onProgress: () => {} }
@@ -38,5 +39,18 @@ describe('pack.plan', () => {
       { id: '1', type: 'pack', name: 'p', enabled: true, source: dir, output: 'o.zip', excludes: [] }, ctx)
     expect(r.noop).toBe(false)
     expect(r.changes[0].detail).toContain('2')
+  })
+})
+
+describe('import.plan 单文件/zip 区分', () => {
+  it('非 zip 源报告复制文件，而非清空目标目录', async () => {
+    const src = path.join(dir, 'tool.bin')
+    fs.writeFileSync(src, 'BIN')
+    const target = path.join(dir, 'target')
+    fs.mkdirSync(target, { recursive: true })
+    const r = await importExecutor.plan(
+      { id: '1', type: 'import', name: 'i', enabled: true, zip: src, target, preserve: [], rename: '' }, ctx)
+    expect(r.changes.some(c => c.detail.includes('清空目标目录'))).toBe(false)
+    expect(r.changes.some(c => c.detail.includes('复制文件'))).toBe(true)
   })
 })

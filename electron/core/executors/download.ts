@@ -42,8 +42,12 @@ function fetchTo(url: string, dest: string, ctx: ExecContext, redirects = 0): Pr
       res.on('error', fail)
       out.on('error', fail)
       out.on('finish', () => out.close(() => {
-        fs.renameSync(tmp, dest)
-        resolve()
+        try {
+          fs.renameSync(tmp, dest)
+          resolve()
+        } catch (e) {
+          fs.unlink(tmp, () => reject(e instanceof Error ? e : new Error(String(e))))
+        }
       }))
     })
     req.on('error', reject)

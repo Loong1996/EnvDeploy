@@ -7,11 +7,12 @@ interface Props {
   title: string
   rules: Rule[]
   memory: Record<string, boolean>
+  confirmLabel?: string
   onConfirm(ids: string[], memory: Record<string, boolean>): void
   onCancel(): void
 }
 
-export default function SelectionDialog({ title, rules, memory, onConfirm, onCancel }: Props) {
+export default function SelectionDialog({ title, rules, memory, confirmLabel, onConfirm, onCancel }: Props) {
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(rules.map(r => [r.id, memory[r.id] ?? true])),
   )
@@ -34,7 +35,7 @@ export default function SelectionDialog({ title, rules, memory, onConfirm, onCan
           <div className="spacer" />
           <button className="btn" onClick={onCancel}>取消</button>
           <button className="btn btn-primary" disabled={!ids.length} onClick={() => onConfirm(ids, checked)}>
-            执行 ({ids.length})
+            {confirmLabel ?? '执行'} ({ids.length})
           </button>
         </>
       }

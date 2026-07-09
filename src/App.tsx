@@ -124,7 +124,11 @@ export default function App() {
     if (r.canceled) return
     if (r.ok && r.config) {
       setConfig(r.config)
-      setLogs(l => [{ time: new Date().toLocaleString(), ok: true, summary: `已导入 ${r.added ?? 0} 条规则`, details: [] }, ...l])
+      const added = r.added ?? 0
+      const summary = added > 0
+        ? `已导入 ${added} 条规则（可能含 run/download 动作，部署前请在预览中核对）`
+        : `已导入 ${added} 条规则`
+      setLogs(l => [{ time: new Date().toLocaleString(), ok: true, summary, details: [] }, ...l])
     } else {
       setLogs(l => [{ time: new Date().toLocaleString(), ok: false, summary: `导入失败: ${r.error ?? '未知错误'}`, details: [] }, ...l])
     }
@@ -135,7 +139,6 @@ export default function App() {
 
   const doExport = async (ids: string[], memory: Record<string, boolean>): Promise<void> => {
     setSelecting(null)
-    update(c => ({ ...c, selectionMemory: { ...c.selectionMemory, deploy: memory } }))
     if (!ids.length) return
     const r = await window.api.exportRules(ids)
     if (r.ok) setLogs(l => [{ time: new Date().toLocaleString(), ok: true, summary: `已导出到 ${r.path}`, details: [] }, ...l])
@@ -224,7 +227,8 @@ export default function App() {
             selecting === 'export' ? config.rules
               : (selecting === 'pack' ? packRules : deployRules).filter(r => r.enabled)
           }
-          memory={config.selectionMemory[selecting === 'pack' ? 'pack' : 'deploy']}
+          memory={selecting === 'export' ? {} : config.selectionMemory[selecting === 'pack' ? 'pack' : 'deploy']}
+          confirmLabel={selecting === 'preview' ? '预览' : selecting === 'export' ? '导出' : '执行'}
           onConfirm={(ids, memory) => {
             if (selecting === 'preview') return void doPreview(ids, memory)
             if (selecting === 'export') return void doExport(ids, memory)
