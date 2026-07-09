@@ -29,18 +29,25 @@ function fetchTo(url: string, dest: string, ctx: ExecContext, redirects = 0): Pr
       let received = 0
       const tmp = `${dest}.download`
       const out = fs.createWriteStream(tmp)
+      const fail = (err: Error): void => {
+        res.destroy()
+        out.destroy()
+        fs.unlink(tmp, () => reject(err))
+      }
       res.on('data', chunk => {
         received += chunk.length
         ctx.onProgress(received, total || received, `${(received / 1048576).toFixed(1)} MiB`)
       })
       res.pipe(out)
-      out.on('error', reject)
+      res.on('error', fail)
+      out.on('error', fail)
       out.on('finish', () => out.close(() => {
         fs.renameSync(tmp, dest)
         resolve()
       }))
     })
     req.on('error', reject)
+    req.setTimeout(30000, () => req.destroy(new Error('下载超时')))
   })
 }
 
