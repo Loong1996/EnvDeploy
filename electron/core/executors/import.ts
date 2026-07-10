@@ -46,10 +46,11 @@ const LOCK_HINT = (name: string): string =>
   `「${name}」被占用，无法替换。请关闭正在使用它的程序（资源管理器 / 编辑器 / 终端）后重试；` +
   `开发模式（npm run dev）下若目标位于项目目录内，会被文件监视器占用，请改用项目外的目标目录。`
 
-/** 带重试删除单个路径；被占用时抛出可操作提示 */
+/** 带重试删除单个路径；被占用时抛出可操作提示。
+ * 重试较多是为了盖过开发模式下 Vite 读取刚解压文件造成的短暂占用竞争。 */
 function removePath(p: string, label = path.basename(p)): void {
   try {
-    fs.rmSync(p, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 })
+    fs.rmSync(p, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
   } catch (e) {
     const code = (e as NodeJS.ErrnoException).code
     if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') throw new Error(LOCK_HINT(label))
