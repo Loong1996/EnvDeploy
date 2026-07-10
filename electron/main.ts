@@ -11,11 +11,13 @@ import { isAdmin } from './core/executors/env'
 
 registerBuiltins()
 
-/** 配置/packages 的落盘基准目录:portable 下为 exe 所在目录 */
+/** 配置/packages 的落盘基准目录:打包后为 exe 所在目录,开发时归入 dev-data/ 子目录(不污染工程根) */
 function appDir(): string {
   if (process.env.PORTABLE_EXECUTABLE_DIR) return process.env.PORTABLE_EXECUTABLE_DIR
   if (app.isPackaged) return path.dirname(app.getPath('exe'))
-  return process.cwd()
+  const dev = path.join(process.cwd(), 'dev-data')
+  fs.mkdirSync(dev, { recursive: true })
+  return dev
 }
 
 function createWindow(): void {

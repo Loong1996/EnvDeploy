@@ -2,9 +2,6 @@ node_modules/
 out/
 release/
 dist/
-config.json
-config_backups/
-backups/
-packages/
+dev-data/
 testunpack/
 *.log
