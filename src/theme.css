@@ -315,3 +315,31 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .backup-list { display: flex; flex-direction: column; gap: 6px; }
 .backup-item { display: flex; align-items: center; gap: 12px; padding: 6px 10px; border-radius: 6px; background: var(--bg); }
 .backup-item .name { flex: 1; font-size: 13px; }
+
+/* ── ${VAR} 快查面板 ─────────────────────────────── */
+.editor-tools { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.var-search { width: 100%; margin-bottom: 10px; }
+.var-ref {
+  user-select: text;
+  max-height: 56vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.var-group {
+  position: sticky; top: 0;
+  background: var(--bg-card);
+  color: var(--text-dim);
+  font-size: 12px; font-weight: 600;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.var-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.var-row:last-child { border-bottom: none; }
+.var-name { flex: 0 0 190px; color: var(--accent); font-size: 12.5px; word-break: break-all; }
+.var-value { flex: 1; color: var(--text-dim); font-size: 12.5px; word-break: break-all; }
+.var-copy { flex-shrink: 0; padding: 3px 10px; font-size: 12px; }

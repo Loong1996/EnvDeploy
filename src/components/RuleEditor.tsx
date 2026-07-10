@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import type { EnvOp, EnvScope, JsonOp, PathPosition, Rule, RunShell } from '@shared/types'
 import Modal from './Modal'
 import TagInput from './TagInput'
+import VarReference from './VarReference'
 
 interface Props {
   rule: Rule
@@ -44,6 +45,7 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
     rule.type === 'json' ? JSON.stringify(rule.data, null, 2) : '',
   )
   const [errors, setErrors] = useState<string[]>([])
+  const [showVars, setShowVars] = useState(false)
 
   const patch = (p: object): void => setDraft(d => ({ ...d, ...p }) as Rule)
 
@@ -102,6 +104,10 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
         </>
       }
     >
+      <div className="editor-tools">
+        <button className="btn" type="button" onClick={() => setShowVars(true)}>查看可用变量 {'${VAR}'}</button>
+      </div>
+
       <Field label="名称">
         <input value={draft.name} placeholder="给这条规则起个名字" onChange={e => patch({ name: e.target.value })} />
       </Field>
@@ -231,6 +237,8 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
           ))}
         </div>
       )}
+
+      {showVars && <VarReference onClose={() => setShowVars(false)} />}
     </Modal>
   )
 }
