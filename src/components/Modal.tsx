@@ -8,13 +8,9 @@ interface Props {
 }
 
 export default function Modal({ title, onClose, footer, children }: Props) {
+  // 不再「点遮罩关闭」：避免填表时误点外面导致内容丢失。只能用 ×/取消/关闭 关闭。
   return (
-    <div
-      className="modal-mask"
-      onMouseDown={e => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
+    <div className="modal-mask">
       <div className="modal">
         <div className="modal-head">
           <span>{title}</span>
