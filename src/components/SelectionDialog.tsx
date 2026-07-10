@@ -41,14 +41,16 @@ export default function SelectionDialog({ title, rules, memory, confirmLabel, on
       }
     >
       {rules.length === 0 && <div className="empty">没有已启用的规则</div>}
+      {rules.length > 0 && <div className="preview-summary dim">勾选项从上到下依次执行（顺序在规则列表拖拽调整）</div>}
       <div className="check-list">
-        {rules.map(r => (
+        {rules.map((r, i) => (
           <label key={r.id} className="check-item">
             <input
               type="checkbox"
               checked={!!checked[r.id]}
               onChange={e => setChecked(c => ({ ...c, [r.id]: e.target.checked }))}
             />
+            <span className="idx">{i + 1}</span>
             <span className="name">{r.name}</span>
             <span className="dim">{ruleSummary(r)}</span>
           </label>

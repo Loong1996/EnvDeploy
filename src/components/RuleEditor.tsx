@@ -25,12 +25,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function PathRow({ value, onChange, pick, placeholder }: {
   value: string
   onChange(v: string): void
-  pick?: 'file' | 'dir' | 'both'
+  pick?: 'file' | 'dir' | 'both' | 'packageFile'
   placeholder?: string
 }) {
-  const choose = async (kind: 'file' | 'dir'): Promise<void> => {
+  const choose = async (kind: 'file' | 'dir' | 'packageFile'): Promise<void> => {
     // Windows 上一个原生对话框无法同时选文件和文件夹，故 both 时分两个按钮
-    const p = kind === 'dir' ? await window.api.pickDir() : await window.api.pickFile()
+    const p = kind === 'dir' ? await window.api.pickDir()
+      : kind === 'packageFile' ? await window.api.pickPackageFile()
+      : await window.api.pickFile()
     if (p) onChange(p)
   }
   return (
@@ -42,7 +44,7 @@ function PathRow({ value, onChange, pick, placeholder }: {
           <button className="btn" onClick={() => void choose('dir')}>文件夹…</button>
         </>
       ) : pick ? (
-        <button className="btn" onClick={() => void choose(pick === 'dir' ? 'dir' : 'file')}>浏览…</button>
+        <button className="btn" onClick={() => void choose(pick === 'dir' ? 'dir' : pick === 'packageFile' ? 'packageFile' : 'file')}>浏览…</button>
       ) : null}
     </div>
   )
@@ -136,7 +138,7 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
       {draft.type === 'import' && (
         <>
           <Field label="源文件（zip 或任意文件，相对路径从 packages/ 查找）">
-            <PathRow value={draft.zip} onChange={v => patch({ zip: v })} pick="file" placeholder="claude.zip" />
+            <PathRow value={draft.zip} onChange={v => patch({ zip: v })} pick="packageFile" placeholder="claude.zip" />
           </Field>
           <Field label="目标目录（支持 ${VAR} 环境变量）">
             <PathRow value={draft.target} onChange={v => patch({ target: v })} pick="dir" placeholder="${USERPROFILE}/.claude" />

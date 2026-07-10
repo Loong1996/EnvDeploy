@@ -12,6 +12,8 @@ export interface Api {
   envVars(): Promise<Record<string, string>>
   pickFile(): Promise<string | null>
   pickDir(): Promise<string | null>
+  /** 导入源文件专用：默认打开 packages/，选中 packages 内文件时返回相对路径 */
+  pickPackageFile(): Promise<string | null>
   runRules(ruleIds: string[]): Promise<RuleResult[]>
   planRules(ruleIds: string[]): Promise<RulePlan[]>
   exportRules(ruleIds: string[]): Promise<{ ok: boolean; path?: string; canceled?: boolean }>

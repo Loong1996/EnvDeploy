@@ -14,6 +14,7 @@ const api: Api = {
   envVars: () => ipcRenderer.invoke('sys:env-vars'),
   pickFile: () => ipcRenderer.invoke('dialog:pick-file'),
   pickDir: () => ipcRenderer.invoke('dialog:pick-dir'),
+  pickPackageFile: () => ipcRenderer.invoke('dialog:pick-package-file'),
   runRules: (ids: string[]) => ipcRenderer.invoke('rules:run', ids),
   planRules: (ids: string[]) => ipcRenderer.invoke('rules:plan', ids),
   exportRules: (ids: string[]) => ipcRenderer.invoke('ruleset:export', ids),

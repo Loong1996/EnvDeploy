@@ -62,6 +62,21 @@ app.whenReady().then(() => {
     return r.canceled ? null : r.filePaths[0]
   })
 
+  // 导入源文件专用：默认定位到 exe 的 packages/；选中项在 packages 内则返回相对路径（保持跨机器可移植）
+  ipcMain.handle('dialog:pick-package-file', async () => {
+    const pkgDir = path.join(appDir(), 'packages')
+    fs.mkdirSync(pkgDir, { recursive: true })
+    const r = await dialog.showOpenDialog({
+      defaultPath: pkgDir,
+      properties: ['openFile'],
+      filters: [{ name: '所有文件', extensions: ['*'] }],
+    })
+    if (r.canceled) return null
+    const picked = r.filePaths[0]
+    const rel = path.relative(pkgDir, picked)
+    return (!rel.startsWith('..') && !path.isAbsolute(rel)) ? rel.split(path.sep).join('/') : picked
+  })
+
   ipcMain.handle('rules:run', async (e, ruleIds: string[]) => {
     const cfg = loadConfig(appDir())
     const rules = ruleIds
