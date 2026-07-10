@@ -42,20 +42,28 @@ function backupToStore(baseDir: string, target: string): string {
   return dest
 }
 
-/** 删除已存在的目标（带重试）；被占用无法删除时抛出可操作的提示 */
-function removeTarget(target: string): void {
+const LOCK_HINT = (name: string): string =>
+  `「${name}」被占用，无法替换。请关闭正在使用它的程序（资源管理器 / 编辑器 / 终端）后重试；` +
+  `开发模式（npm run dev）下若目标位于项目目录内，会被文件监视器占用，请改用项目外的目标目录。`
+
+/** 带重试删除单个路径；被占用时抛出可操作提示 */
+function removePath(p: string, label = path.basename(p)): void {
   try {
-    fs.rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 })
+    fs.rmSync(p, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 })
   } catch (e) {
     const code = (e as NodeJS.ErrnoException).code
-    if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') {
-      throw new Error(
-        `目标被占用，无法替换：${target}\n` +
-        `请关闭正在使用它的程序（资源管理器 / 编辑器 / 终端）后重试。` +
-        `开发模式（npm run dev）下若目标位于项目目录内，会被文件监视器占用，请改用项目外的目标目录。`,
-      )
-    }
+    if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') throw new Error(LOCK_HINT(label))
     throw e
+  }
+}
+
+/**
+ * 清空目录**内容**但保留目录本身：不去 rename/删除被占用的目录节点，
+ * 只逐个删除里面的条目——目标目录被资源管理器/编辑器/监视器占用时更可能成功。
+ */
+function clearDirContents(dir: string): void {
+  for (const name of fs.readdirSync(dir)) {
+    removePath(path.join(dir, name), name)
   }
 }
 
@@ -122,8 +130,11 @@ export const importExecutor: RuleExecutor<ImportRule> = {
       const filename = path.basename(rule.rename.trim()) || path.basename(src)
       fs.mkdirSync(target, { recursive: true })
       const dest = path.join(target, filename)
-      if (fs.existsSync(dest) && doBackup) backupToStore(ctx.baseDir, dest)
-      if (fs.existsSync(dest)) removeTarget(dest)
+      if (fs.existsSync(dest)) {
+        if (doBackup) backupToStore(ctx.baseDir, dest)
+        // 目标是文件：copyFileSync 原地覆盖即可（不删文件节点，更稳）；是目录才需先删
+        if (fs.statSync(dest).isDirectory()) removePath(dest)
+      }
       fs.copyFileSync(src, dest)
       ctx.onProgress(1, 1, filename)
       return `已复制文件到 ${dest}`
@@ -142,7 +153,7 @@ export const importExecutor: RuleExecutor<ImportRule> = {
         }
       }
       if (doBackup) backupToStore(ctx.baseDir, target)
-      removeTarget(target)
+      clearDirContents(target)
     }
     fs.mkdirSync(target, { recursive: true })
 
