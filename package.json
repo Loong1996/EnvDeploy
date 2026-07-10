@@ -10,7 +10,7 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dist": "electron-vite build && electron-builder --win"
+    "dist": "electron-vite build && electron-builder --win && node scripts/postdist.mjs"
   },
   "dependencies": {
     "archiver": "^8.0.0",

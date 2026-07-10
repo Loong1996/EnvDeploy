@@ -26,10 +26,10 @@
 
 ## 使用
 
-`npm run dist` 产出免安装文件夹 `release/win-unpacked/`：整个文件夹拷到任意目录，直接运行里面的 `EnvDeploy.exe`（启动即时、可随意往里放 config / packages 数据、整个文件夹可拷走）。首次运行会在 exe 同级目录生成运行数据：
+`npm run dist` 产出免安装文件夹 `release/EnvDeploy-<日期>-<随机码>/`（每次构建唯一命名、不覆盖历史）：整个文件夹拷到任意目录，直接运行里面的 `EnvDeploy.exe`（启动即时、可随意往里放 config / packages 数据、整个文件夹可拷走）。首次运行会在 exe 同级目录生成运行数据：
 
 ```
-win-unpacked/（可改名后拷走）
+EnvDeploy-20260710-6eee66/（可改名后拷走）
 ├── EnvDeploy.exe          ← 主程序（旁边是 Electron 运行时文件）
 ├── resources/ locales/ …  ← Electron 运行时（勿删）
 ├── config.json            ← 首次运行自动生成（空规则集）
@@ -50,7 +50,7 @@ npm run dev        # 开发窗口
 npm run test       # 核心引擎单测（Vitest）
 npm run typecheck  # tsc --noEmit
 npm run build      # 仅编译代码到 out/（dist 的内部第一步，一般无需单独运行）
-npm run dist       # 产出免安装文件夹 release/win-unpacked/（不压缩，拷走即用）
+npm run dist       # 产出免安装文件夹 release/EnvDeploy-<日期>-<随机码>/（不压缩，唯一命名，拷走即用）
 ```
 
 > **要发行给别人用，只跑 `npm run dist` 就够了**：它已经内含 `build`（先编译代码，再套 Electron 打包成可直接运行的 `release/win-unpacked/`）。`build` 只是它的中间步骤，单独运行只用于确认代码能否编译通过。
