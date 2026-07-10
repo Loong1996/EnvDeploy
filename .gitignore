@@ -4,5 +4,7 @@ release/
 dist/
 config.json
 config_backups/
+backups/
 packages/
+testunpack/
 *.log

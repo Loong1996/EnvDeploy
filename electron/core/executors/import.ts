@@ -26,13 +26,37 @@ function timestamp(): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
 }
 
-/** 把已存在的文件/目录移到旁边的 -backup-<时间戳> 位置 */
-function backupAside(target: string): string {
-  let dest = `${target}-backup-${timestamp()}`
+/**
+ * 把已存在的文件/目录**复制**到 exe 目录下的 backups/ 里。
+ * 用复制而非 rename：rename 会在目标被占用/受控文件夹时报 EPERM，且无法跨卷。
+ * 命名 <名字>-backup-<时间戳>，同秒冲突再加 -n，多次备份互不覆盖。
+ */
+function backupToStore(baseDir: string, target: string): string {
+  const store = path.join(baseDir, 'backups')
+  fs.mkdirSync(store, { recursive: true })
+  const base = path.basename(target)
+  let dest = path.join(store, `${base}-backup-${timestamp()}`)
   let n = 1
-  while (fs.existsSync(dest)) dest = `${target}-backup-${timestamp()}-${n++}`
-  fs.renameSync(target, dest)
+  while (fs.existsSync(dest)) dest = path.join(store, `${base}-backup-${timestamp()}-${n++}`)
+  fs.cpSync(target, dest, { recursive: true })
   return dest
+}
+
+/** 删除已存在的目标（带重试）；被占用无法删除时抛出可操作的提示 */
+function removeTarget(target: string): void {
+  try {
+    fs.rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 })
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code
+    if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') {
+      throw new Error(
+        `目标被占用，无法替换：${target}\n` +
+        `请关闭正在使用它的程序（资源管理器 / 编辑器 / 终端）后重试。` +
+        `开发模式（npm run dev）下若目标位于项目目录内，会被文件监视器占用，请改用项目外的目标目录。`,
+      )
+    }
+    throw e
+  }
 }
 
 /** 防 zip-slip:目标必须落在 root 内 */
@@ -62,13 +86,14 @@ export const importExecutor: RuleExecutor<ImportRule> = {
     const src = resolvePackagePath(ctx.baseDir, expandVars(rule.zip))
     const target = path.normalize(expandVars(rule.target))
     if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error(`源文件不存在: ${src}`)
+    const doBackup = rule.backup ?? ctx.settings.backupBeforeImport
 
     if (!isZipFile(src)) {
       const filename = path.basename(rule.rename.trim()) || path.basename(src)
       const dest = path.join(target, filename)
       const changes: PlanChange[] = []
-      if (fs.existsSync(dest) && ctx.settings.backupBeforeImport) {
-        changes.push({ kind: 'delete', detail: `备份已存在文件: ${dest}` })
+      if (fs.existsSync(dest) && doBackup) {
+        changes.push({ kind: 'delete', detail: `备份到 backups/ 后覆盖: ${dest}` })
       }
       changes.push({ kind: 'create', detail: `复制文件 → ${dest}` })
       return { noop: false, changes }
@@ -77,7 +102,7 @@ export const importExecutor: RuleExecutor<ImportRule> = {
     const changes: PlanChange[] = []
     if (fs.existsSync(target)) {
       const preserved = collectPreserved(target, normalizePatterns(rule.preserve))
-      changes.push({ kind: 'delete', detail: ctx.settings.backupBeforeImport ? `备份并清空目标目录: ${target}` : `删除目标目录: ${target}` })
+      changes.push({ kind: 'delete', detail: doBackup ? `备份到 backups/ 并清空目标目录: ${target}` : `清空目标目录: ${target}` })
       if (preserved.length) changes.push({ kind: 'create', detail: `保留 ${preserved.length} 项` })
     }
     changes.push({ kind: 'create', detail: `解压导入到 ${target}` })
@@ -90,16 +115,15 @@ export const importExecutor: RuleExecutor<ImportRule> = {
     const src = resolvePackagePath(ctx.baseDir, expandVars(rule.zip))
     const target = path.normalize(expandVars(rule.target))
     if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error(`源文件不存在: ${src}`)
+    const doBackup = rule.backup ?? ctx.settings.backupBeforeImport
 
     // 非 zip:单文件复制
     if (!isZipFile(src)) {
       const filename = path.basename(rule.rename.trim()) || path.basename(src)
       fs.mkdirSync(target, { recursive: true })
       const dest = path.join(target, filename)
-      if (fs.existsSync(dest)) {
-        if (ctx.settings.backupBeforeImport) backupAside(dest)
-        else fs.rmSync(dest, { recursive: true, force: true })
-      }
+      if (fs.existsSync(dest) && doBackup) backupToStore(ctx.baseDir, dest)
+      if (fs.existsSync(dest)) removeTarget(dest)
       fs.copyFileSync(src, dest)
       ctx.onProgress(1, 1, filename)
       return `已复制文件到 ${dest}`
@@ -117,8 +141,8 @@ export const importExecutor: RuleExecutor<ImportRule> = {
           fs.cpSync(abs, dst, { recursive: true })
         }
       }
-      if (ctx.settings.backupBeforeImport) backupAside(target)
-      else fs.rmSync(target, { recursive: true, force: true })
+      if (doBackup) backupToStore(ctx.baseDir, target)
+      removeTarget(target)
     }
     fs.mkdirSync(target, { recursive: true })
 

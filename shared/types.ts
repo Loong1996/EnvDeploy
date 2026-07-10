@@ -20,6 +20,8 @@ export interface ImportRule extends RuleBase {
   target: string
   preserve: string[]
   rename: string
+  /** 导入前是否备份到 exe 目录 backups/；缺省时回退到全局设置 backupBeforeImport */
+  backup?: boolean
 }
 
 export type JsonOp = 'append' | 'modify' | 'upsert' | 'overwrite'

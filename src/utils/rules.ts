@@ -6,7 +6,7 @@ export function newRule(type: RuleType): Rule {
     case 'pack':
       return { ...base, type, source: '', output: '', excludes: [] }
     case 'import':
-      return { ...base, type, zip: '', target: '', preserve: [], rename: '' }
+      return { ...base, type, zip: '', target: '', preserve: [], rename: '', backup: true }
     case 'json':
       return { ...base, type, file: '', op: 'upsert', data: {}, preserve: [] }
     case 'env':

@@ -67,15 +67,44 @@ describe('importExecutor', () => {
     expect(fs.existsSync(path.join(tmp, 'target', 'gone.txt'))).toBe(false)
   })
 
-  it('backupBeforeImport 时旧目录被移走保留', async () => {
+  it('备份时旧目录复制到 exe/backups/ 保留（不再 rename）', async () => {
     write('zipsrc/a.txt')
     await makeZip()
     write('target/old.txt', 'OLD')
     await importExecutor.execute(rule({}), ctx(true))
-    const backups = fs.readdirSync(tmp).filter(f => f.startsWith('target-backup-'))
+    const store = path.join(tmp, 'backups')
+    const backups = fs.readdirSync(store).filter(f => f.startsWith('target-backup-'))
     expect(backups.length).toBe(1)
-    expect(fs.readFileSync(path.join(tmp, backups[0], 'old.txt'), 'utf8')).toBe('OLD')
+    expect(fs.readFileSync(path.join(store, backups[0], 'old.txt'), 'utf8')).toBe('OLD')
     expect(fs.existsSync(path.join(tmp, 'target', 'old.txt'))).toBe(false)
+  })
+
+  it('规则级 backup:false 覆盖全局设置：不备份直接覆盖', async () => {
+    write('zipsrc/a.txt')
+    await makeZip()
+    write('target/old.txt', 'OLD')
+    await importExecutor.execute(rule({ backup: false }), ctx(true))
+    expect(fs.existsSync(path.join(tmp, 'backups'))).toBe(false)
+    expect(fs.existsSync(path.join(tmp, 'target', 'old.txt'))).toBe(false)
+  })
+
+  it('规则级 backup:true 覆盖全局设置：即使全局关也备份', async () => {
+    write('zipsrc/a.txt')
+    await makeZip()
+    write('target/old.txt', 'OLD')
+    await importExecutor.execute(rule({ backup: true }), ctx(false))
+    const backups = fs.readdirSync(path.join(tmp, 'backups')).filter(f => f.startsWith('target-backup-'))
+    expect(backups.length).toBe(1)
+  })
+
+  it('单文件覆盖时也备份到 exe/backups/', async () => {
+    write('packages/tool.bin', 'NEW')
+    write('target/tool.bin', 'OLD')
+    await importExecutor.execute(rule({ zip: 'tool.bin' }), ctx(true))
+    expect(fs.readFileSync(path.join(tmp, 'target', 'tool.bin'), 'utf8')).toBe('NEW')
+    const backups = fs.readdirSync(path.join(tmp, 'backups')).filter(f => f.startsWith('tool.bin-backup-'))
+    expect(backups.length).toBe(1)
+    expect(fs.readFileSync(path.join(tmp, 'backups', backups[0]), 'utf8')).toBe('OLD')
   })
 
   it('非 zip 源按单文件复制并支持 rename', async () => {

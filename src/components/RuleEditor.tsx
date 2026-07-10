@@ -139,6 +139,10 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
           <Field label="保留（导入时保留目标目录中匹配的文件/目录，优先于 zip 内容）">
             <TagInput value={draft.preserve} onChange={v => patch({ preserve: v })} placeholder="输入后回车添加" />
           </Field>
+          <label className="check-item">
+            <input type="checkbox" checked={draft.backup ?? true} onChange={e => patch({ backup: e.target.checked })} />
+            <span>导入前备份到 exe 目录 backups/（多次备份自动加时间戳，不勾则直接覆盖）</span>
+          </label>
         </>
       )}
 
