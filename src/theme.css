@@ -343,3 +343,9 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .var-name { flex: 0 0 190px; color: var(--accent); font-size: 12.5px; word-break: break-all; }
 .var-value { flex: 1; color: var(--text-dim); font-size: 12.5px; word-break: break-all; }
 .var-copy { flex-shrink: 0; padding: 3px 10px; font-size: 12px; }
+
+/* ── 逐行路径编辑器 ───────────────────────────────── */
+.keypath-list { display: flex; flex-direction: column; gap: 6px; }
+.keypath-row { display: flex; gap: 8px; }
+.keypath-row input { flex: 1; }
+.keypath-add { align-self: flex-start; }

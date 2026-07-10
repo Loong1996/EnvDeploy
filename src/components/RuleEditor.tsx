@@ -3,6 +3,7 @@ import type { EnvOp, EnvScope, JsonOp, PathPosition, Rule, RunShell } from '@sha
 import Modal from './Modal'
 import TagInput from './TagInput'
 import VarReference from './VarReference'
+import KeyPathList from './KeyPathList'
 
 interface Props {
   rule: Rule
@@ -71,6 +72,7 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
         } catch {
           errs.push('JSON 数据格式错误')
         }
+        final.preserve = (final.preserve ?? []).map(s => s.trim()).filter(Boolean)
         break
       }
       case 'env':
@@ -156,6 +158,11 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
               <option value="overwrite">overwrite — 全量覆盖整个文件</option>
             </select>
           </Field>
+          {(draft.op === 'overwrite' || draft.op === 'upsert') && (
+            <Field label="保留（覆盖/合并时保持原文件的这些 key，点路径如 a.b.c）">
+              <KeyPathList value={draft.preserve ?? []} onChange={v => patch({ preserve: v })} placeholder="a.b.c" />
+            </Field>
+          )}
           <Field label="数据（JSON 对象，嵌套对象逐层合并）">
             <textarea rows={10} value={jsonText} spellCheck={false} onChange={e => setJsonText(e.target.value)} />
           </Field>

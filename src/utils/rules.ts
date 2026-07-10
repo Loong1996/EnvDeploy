@@ -8,7 +8,7 @@ export function newRule(type: RuleType): Rule {
     case 'import':
       return { ...base, type, zip: '', target: '', preserve: [], rename: '' }
     case 'json':
-      return { ...base, type, file: '', op: 'upsert', data: {} }
+      return { ...base, type, file: '', op: 'upsert', data: {}, preserve: [] }
     case 'env':
       return { ...base, type, key: '', value: '', op: 'set', scope: 'user', pathPosition: 'append' }
     case 'run':
@@ -34,8 +34,10 @@ export function ruleSummary(r: Rule): string {
       return `${r.source} → ${r.output}`
     case 'import':
       return `${r.zip} → ${r.target}`
-    case 'json':
-      return `${r.file} (${r.op})`
+    case 'json': {
+      const keep = r.preserve?.length ? ` · 保留 ${r.preserve.length} 项` : ''
+      return `${r.file} (${r.op})${keep}`
+    }
     case 'env': {
       const tag = r.scope === 'machine' ? '[机器]' : '[用户]'
       if (r.op === 'remove') return `${tag} 移除 ${r.key}${r.value ? ` (${r.value})` : ''}`
