@@ -2,7 +2,7 @@
 
 把一台机器上的环境配置（AI 编程配置只是其中一种用法）打包成规则集，在任意 Windows 机器上一键部署：解压文件、改 JSON、写环境变量、跑脚本、下载文件。
 
-基于 Electron + React + TypeScript，分发为免安装的 portable 单 exe。**仅支持 Windows。**
+基于 Electron + React + TypeScript，分发为免安装的绿色文件夹（整个文件夹拷走即用）。**仅支持 Windows。**
 
 ## 功能
 
@@ -26,10 +26,10 @@
 
 ## 使用
 
-分发为 `EnvDeploy-2.0.0.zip`：解压一次到任意目录，直接运行里面的 `EnvDeploy.exe`（免安装、启动即时、整个文件夹可拷走）。首次运行会在 exe 同级目录生成运行数据：
+`npm run dist` 产出免安装文件夹 `release/win-unpacked/`：整个文件夹拷到任意目录，直接运行里面的 `EnvDeploy.exe`（启动即时、可随意往里放 config / packages 数据、整个文件夹可拷走）。首次运行会在 exe 同级目录生成运行数据：
 
 ```
-解压后的目录/
+win-unpacked/（可改名后拷走）
 ├── EnvDeploy.exe          ← 主程序（旁边是 Electron 运行时文件）
 ├── resources/ locales/ …  ← Electron 运行时（勿删）
 ├── config.json            ← 首次运行自动生成（空规则集）
@@ -50,7 +50,7 @@ npm run dev        # 开发窗口
 npm run test       # 核心引擎单测（Vitest）
 npm run typecheck  # tsc --noEmit
 npm run build       # electron-vite build
-npm run dist        # 打包成 release/EnvDeploy-2.0.0.zip（解压即用的文件夹）
+npm run dist        # 产出免安装文件夹 release/win-unpacked/（不压缩，拷走即用）
 ```
 
 ## 架构

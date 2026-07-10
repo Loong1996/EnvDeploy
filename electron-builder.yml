@@ -7,7 +7,6 @@ files:
 extraResources:
   - examples/**
 win:
-  target: zip
-artifactName: ${productName}-${version}.${ext}
+  target: dir
 electronLanguages:
   - zh-CN
