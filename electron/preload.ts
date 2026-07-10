@@ -11,6 +11,7 @@ const api: Api = {
   restoreConfig: (p: string) => ipcRenderer.invoke('config:restore', p),
   ruleTypes: () => ipcRenderer.invoke('rule-types'),
   isAdmin: () => ipcRenderer.invoke('sys:is-admin'),
+  envVars: () => ipcRenderer.invoke('sys:env-vars'),
   pickFile: () => ipcRenderer.invoke('dialog:pick-file'),
   pickDir: () => ipcRenderer.invoke('dialog:pick-dir'),
   runRules: (ids: string[]) => ipcRenderer.invoke('rules:run', ids),

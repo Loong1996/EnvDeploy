@@ -8,6 +8,8 @@ export interface Api {
   restoreConfig(backupPath: string): Promise<AppConfig>
   ruleTypes(): Promise<RuleTypeInfo[]>
   isAdmin(): Promise<boolean>
+  /** 主进程环境变量（${VAR} 展开的真实来源），供快查面板 */
+  envVars(): Promise<Record<string, string>>
   pickFile(): Promise<string | null>
   pickDir(): Promise<string | null>
   runRules(ruleIds: string[]): Promise<RuleResult[]>

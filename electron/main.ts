@@ -43,6 +43,11 @@ app.whenReady().then(() => {
   ipcMain.handle('config:restore', (_e, p: string) => restoreConfig(appDir(), p))
   ipcMain.handle('rule-types', () => listRuleTypes())
   ipcMain.handle('sys:is-admin', () => isAdmin())
+  ipcMain.handle('sys:env-vars', () => {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(process.env)) if (v !== undefined) out[k] = v
+    return out
+  })
 
   ipcMain.handle('dialog:pick-file', async () => {
     const r = await dialog.showOpenDialog({
