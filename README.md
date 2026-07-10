@@ -49,9 +49,11 @@ npm install
 npm run dev        # 开发窗口
 npm run test       # 核心引擎单测（Vitest）
 npm run typecheck  # tsc --noEmit
-npm run build       # electron-vite build
-npm run dist        # 产出免安装文件夹 release/win-unpacked/（不压缩，拷走即用）
+npm run build      # 仅编译代码到 out/（dist 的内部第一步，一般无需单独运行）
+npm run dist       # 产出免安装文件夹 release/win-unpacked/（不压缩，拷走即用）
 ```
+
+> **要发行给别人用，只跑 `npm run dist` 就够了**：它已经内含 `build`（先编译代码，再套 Electron 打包成可直接运行的 `release/win-unpacked/`）。`build` 只是它的中间步骤，单独运行只用于确认代码能否编译通过。
 
 ## 架构
 
