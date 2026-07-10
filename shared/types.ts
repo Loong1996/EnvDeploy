@@ -29,6 +29,8 @@ export interface JsonRule extends RuleBase {
   file: string
   op: JsonOp
   data: Record<string, unknown>
+  /** 点路径列表；仅 overwrite/upsert 生效：这些 key 保持原文件的值 */
+  preserve?: string[]
 }
 
 export type EnvOp = 'set' | 'append_path' | 'remove'

@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { deepMerge, jsonExecutor } from '../electron/core/executors/json'
+import { deepMerge, getByPath, jsonExecutor, setByPath } from '../electron/core/executors/json'
 import type { ExecContext } from '../electron/core/executor'
 import type { JsonRule } from '../shared/types'
 
@@ -47,6 +47,88 @@ describe('deepMerge', () => {
     const result = deepMerge({ a: 1 }, overlay)
     expect(result).toEqual({ a: 1, safe: 2 })
     expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+  })
+})
+
+describe('getByPath', () => {
+  it('命中嵌套值', () => {
+    expect(getByPath({ a: { b: { c: 1 } } }, 'a.b.c')).toBe(1)
+  })
+  it('路径不存在 → undefined', () => {
+    expect(getByPath({ a: {} }, 'a.b.c')).toBeUndefined()
+  })
+  it('中途非对象 → undefined', () => {
+    expect(getByPath({ a: 5 }, 'a.b')).toBeUndefined()
+  })
+  it('空段非法 → undefined', () => {
+    expect(getByPath({ a: { b: 1 } }, 'a..b')).toBeUndefined()
+  })
+})
+
+describe('setByPath', () => {
+  it('新建嵌套对象', () => {
+    const o: Record<string, unknown> = {}
+    setByPath(o, 'a.b.c', 9)
+    expect(o).toEqual({ a: { b: { c: 9 } } })
+  })
+  it('中途非对象则替换为对象', () => {
+    const o: Record<string, unknown> = { a: 5 }
+    setByPath(o, 'a.b', 1)
+    expect(o).toEqual({ a: { b: 1 } })
+  })
+  it('危险 key 整条跳过', () => {
+    const o: Record<string, unknown> = {}
+    setByPath(o, '__proto__.polluted', true)
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+    expect(o).toEqual({})
+  })
+  it('空段非法则跳过', () => {
+    const o: Record<string, unknown> = {}
+    setByPath(o, 'a..b', 1)
+    expect(o).toEqual({})
+  })
+})
+
+describe('jsonExecutor preserve', () => {
+  it('overwrite 保留原文件存在的路径（原值优先）', async () => {
+    const p = writeJson({ token: 'SECRET', nested: { keep: 1, drop: 2 }, gone: true })
+    await jsonExecutor.execute(
+      rule({ op: 'overwrite', data: { token: 'NEW', nested: { keep: 9 }, fresh: 1 }, preserve: ['token', 'nested.keep'] }),
+      ctx(),
+    )
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ token: 'SECRET', nested: { keep: 1 }, fresh: 1 })
+  })
+  it('overwrite 保留路径原文件不存在则跳过', async () => {
+    const p = writeJson({ a: 1 })
+    await jsonExecutor.execute(
+      rule({ op: 'overwrite', data: { b: 2 }, preserve: ['missing.path'] }),
+      ctx(),
+    )
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ b: 2 })
+  })
+  it('overwrite 文件不存在时 preserve 无副作用（普通覆盖）', async () => {
+    const p = path.join(tmp, 'new', 'c.json')
+    await jsonExecutor.execute(
+      rule({ file: p, op: 'overwrite', data: { x: 1 }, preserve: ['x'] }),
+      ctx(),
+    )
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ x: 1 })
+  })
+  it('upsert 下 data 写了保留路径但原值优先', async () => {
+    const p = writeJson({ a: { b: 'old' }, other: 1 })
+    await jsonExecutor.execute(
+      rule({ op: 'upsert', data: { a: { b: 'new' }, add: 2 }, preserve: ['a.b'] }),
+      ctx(),
+    )
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ a: { b: 'old' }, other: 1, add: 2 })
+  })
+  it('plan overwrite 汇报保留 N 项（仅原文件存在的）', async () => {
+    writeJson({ token: 'X', other: 1 })
+    const res = await jsonExecutor.plan(
+      rule({ op: 'overwrite', data: { token: 'Y' }, preserve: ['token', 'missing'] }),
+      ctx(),
+    )
+    expect(res.changes.some(c => c.detail.includes('保留 1 项'))).toBe(true)
   })
 })
 
