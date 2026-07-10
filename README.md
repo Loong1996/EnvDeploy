@@ -26,19 +26,20 @@
 
 ## 使用
 
-发布目录结构（全部文件跟随 exe 所在目录）：
+分发为 `EnvDeploy-2.0.0.zip`：解压一次到任意目录，直接运行里面的 `EnvDeploy.exe`（免安装、启动即时、整个文件夹可拷走）。首次运行会在 exe 同级目录生成运行数据：
 
 ```
-任意目录/
-├── EnvDeploy-2.0.0.exe   ← 主程序
-├── config.json           ← 首次运行自动生成（空规则集）
+解压后的目录/
+├── EnvDeploy.exe          ← 主程序（旁边是 Electron 运行时文件）
+├── resources/ locales/ …  ← Electron 运行时（勿删）
+├── config.json            ← 首次运行自动生成（空规则集）
 ├── packages/              ← 打包输出 / 导入来源
 └── config_backups/        ← 配置备份
 ```
 
 典型流程：
-1. **源机器**：配好打包规则（或从示例规则集起步）→ 一键打包 → 把 exe + config.json + packages/ 一起拷走
-2. **新机器**：以管理员身份运行 → 先「预览」确认变更 → 一键部署
+1. **源机器**：配好打包规则（或从示例规则集起步）→ 一键打包 → 把整个文件夹（含 config.json + packages/）一起拷走
+2. **新机器**：以管理员身份运行 `EnvDeploy.exe` → 先「预览」确认变更 → 一键部署
 
 ## 开发
 
@@ -48,7 +49,7 @@ npm run dev        # 开发窗口
 npm run test       # 核心引擎单测（Vitest）
 npm run typecheck  # tsc --noEmit
 npm run build       # electron-vite build
-npm run dist        # 打包 portable exe 到 release/EnvDeploy-2.0.0.exe
+npm run dist        # 打包成 release/EnvDeploy-2.0.0.zip（解压即用的文件夹）
 ```
 
 ## 架构

@@ -10,7 +10,7 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "dist": "electron-vite build && electron-builder --win portable"
+    "dist": "electron-vite build && electron-builder --win"
   },
   "dependencies": {
     "archiver": "^8.0.0",

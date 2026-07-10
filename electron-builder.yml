@@ -7,8 +7,7 @@ files:
 extraResources:
   - examples/**
 win:
-  target: portable
-portable:
-  artifactName: ${productName}-${version}.exe
+  target: zip
+artifactName: ${productName}-${version}.${ext}
 electronLanguages:
   - zh-CN
