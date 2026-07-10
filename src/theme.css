@@ -317,7 +317,6 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .backup-item .name { flex: 1; font-size: 13px; }
 
 /* ── ${VAR} 快查面板 ─────────────────────────────── */
-.editor-tools { display: flex; justify-content: flex-end; margin-bottom: 12px; }
 .var-search { width: 100%; margin-bottom: 10px; }
 .var-ref {
   user-select: text;

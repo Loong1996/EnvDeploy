@@ -100,16 +100,13 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
       onClose={onClose}
       footer={
         <>
+          <button className="btn" type="button" onClick={() => setShowVars(true)}>查看可用变量 {'${VAR}'}</button>
           <div className="spacer" />
           <button className="btn" onClick={onClose}>取消</button>
           <button className="btn btn-primary" onClick={save}>保存</button>
         </>
       }
     >
-      <div className="editor-tools">
-        <button className="btn" type="button" onClick={() => setShowVars(true)}>查看可用变量 {'${VAR}'}</button>
-      </div>
-
       <Field label="名称">
         <input value={draft.name} placeholder="给这条规则起个名字" onChange={e => patch({ name: e.target.value })} />
       </Field>
