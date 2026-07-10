@@ -107,6 +107,36 @@ describe('importExecutor', () => {
     expect(fs.readFileSync(path.join(tmp, 'backups', backups[0]), 'utf8')).toBe('OLD')
   })
 
+  it('merge 模式不清空目标，叠加保留原有文件', async () => {
+    write('zipsrc/a.txt', 'A')
+    await makeZip()
+    write('target/old.txt', 'OLD')
+    const msg = await importExecutor.execute(rule({ mode: 'merge' }), ctx())
+    expect(fs.readFileSync(path.join(tmp, 'target', 'a.txt'), 'utf8')).toBe('A')
+    expect(fs.readFileSync(path.join(tmp, 'target', 'old.txt'), 'utf8')).toBe('OLD')
+    expect(msg).toContain('已叠加')
+  })
+
+  it('replace 模式清空目标（对照）', async () => {
+    write('zipsrc/a.txt', 'A')
+    await makeZip()
+    write('target/old.txt', 'OLD')
+    await importExecutor.execute(rule({ mode: 'replace' }), ctx())
+    expect(fs.existsSync(path.join(tmp, 'target', 'old.txt'))).toBe(false)
+  })
+
+  it('同一次部署同一目标只备份一次（去重）', async () => {
+    write('zipsrc/a.txt')
+    await makeZip()
+    write('target/old.txt', 'OLD')
+    const shared = new Set<string>()
+    const c = (): ExecContext => ({ baseDir: tmp, settings: { backupBeforeImport: true }, backedUp: shared, onProgress: () => {} })
+    await importExecutor.execute(rule({ mode: 'merge' }), c())
+    await importExecutor.execute(rule({ mode: 'merge' }), c())
+    const backups = fs.readdirSync(path.join(tmp, 'backups')).filter(f => f.startsWith('target-backup-'))
+    expect(backups.length).toBe(1)
+  })
+
   it('非 zip 源按单文件复制并支持 rename', async () => {
     write('packages/tool.bin', 'BIN')
     const msg = await importExecutor.execute(rule({ zip: 'tool.bin', rename: 'renamed.bin' }), ctx())

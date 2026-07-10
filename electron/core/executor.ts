@@ -4,6 +4,8 @@ export interface ExecContext {
   baseDir: string
   settings: Settings
   onProgress(current: number, total: number, detail: string): void
+  /** 一次部署/预览内共享：已备份过的目标（规范化路径），用于同一文件夹只备份一次 */
+  backedUp?: Set<string>
 }
 
 export interface RuleExecutor<T extends Rule = Rule> {

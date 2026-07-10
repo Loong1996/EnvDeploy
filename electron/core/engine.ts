@@ -41,11 +41,13 @@ export async function runRules(
   emit: (p: ProgressEvent) => void = () => {},
 ): Promise<RuleResult[]> {
   const results: RuleResult[] = []
+  const backedUp = new Set<string>()
   for (let i = 0; i < rules.length; i++) {
     const rule = rules[i]
     const ctx: ExecContext = {
       baseDir: opts.baseDir,
       settings: opts.settings,
+      backedUp,
       onProgress: (current, total, detail) =>
         emit({ ruleIndex: i, ruleCount: rules.length, ruleName: rule.name, current, total, detail }),
     }
@@ -69,8 +71,9 @@ export async function planRules(
   opts: { baseDir: string; settings: Settings },
 ): Promise<RulePlan[]> {
   const out: RulePlan[] = []
+  const backedUp = new Set<string>()
   for (const rule of rules) {
-    const ctx: ExecContext = { baseDir: opts.baseDir, settings: opts.settings, onProgress: () => {} }
+    const ctx: ExecContext = { baseDir: opts.baseDir, settings: opts.settings, backedUp, onProgress: () => {} }
     try {
       const res = await getExecutor(rule.type).plan(rule, ctx)
       out.push({ ruleId: rule.id, name: rule.name, ok: true, noop: res.noop, changes: res.changes })

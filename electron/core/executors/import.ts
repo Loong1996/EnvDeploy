@@ -3,7 +3,7 @@ import os from 'os'
 import path from 'path'
 import StreamZip from 'node-stream-zip'
 import type { ImportRule, PlanChange } from '@shared/types'
-import type { RuleExecutor } from '../executor'
+import type { ExecContext, RuleExecutor } from '../executor'
 import { expandVars } from '../vars'
 import { normalizePatterns } from '../match'
 import { collectPreserved } from '../fswalk'
@@ -40,6 +40,14 @@ function backupToStore(baseDir: string, target: string): string {
   while (fs.existsSync(dest)) dest = path.join(store, `${base}-backup-${timestamp()}-${n++}`)
   fs.cpSync(target, dest, { recursive: true })
   return dest
+}
+
+/** 备份一个路径，但同一次部署内同一目标只备份一次（ctx.backedUp 去重） */
+function backupOnce(ctx: ExecContext, target: string): void {
+  const key = path.normalize(target).toLowerCase()
+  if (ctx.backedUp?.has(key)) return
+  backupToStore(ctx.baseDir, target)
+  ctx.backedUp?.add(key)
 }
 
 const LOCK_HINT = (name: string): string =>
@@ -97,24 +105,34 @@ export const importExecutor: RuleExecutor<ImportRule> = {
     if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error(`源文件不存在: ${src}`)
     const doBackup = rule.backup ?? ctx.settings.backupBeforeImport
 
+    // 备份去重：返回该目标本次是否需要备份，并登记
+    const willBackup = (p: string): boolean => {
+      if (!doBackup) return false
+      const key = path.normalize(p).toLowerCase()
+      const first = !ctx.backedUp?.has(key)
+      ctx.backedUp?.add(key)
+      return first
+    }
+    const bkText = (p: string): string => (willBackup(p) ? '备份到 backups/ 后' : doBackup ? '（本次已备份，跳过）' : '')
+
     if (!isZipFile(src)) {
       const filename = path.basename(rule.rename.trim()) || path.basename(src)
       const dest = path.join(target, filename)
       const changes: PlanChange[] = []
-      if (fs.existsSync(dest) && doBackup) {
-        changes.push({ kind: 'delete', detail: `备份到 backups/ 后覆盖: ${dest}` })
-      }
-      changes.push({ kind: 'create', detail: `复制文件 → ${dest}` })
+      const bk = fs.existsSync(dest) ? bkText(dest) : ''
+      changes.push({ kind: 'create', detail: `${bk}复制文件 → ${dest}` })
       return { noop: false, changes }
     }
 
+    const merge = (rule.mode ?? 'replace') === 'merge'
     const changes: PlanChange[] = []
     if (fs.existsSync(target)) {
       const preserved = collectPreserved(target, normalizePatterns(rule.preserve))
-      changes.push({ kind: 'delete', detail: doBackup ? `备份到 backups/ 并清空目标目录: ${target}` : `清空目标目录: ${target}` })
+      const bk = bkText(target)
+      changes.push({ kind: 'delete', detail: merge ? `${bk}叠加导入（不清空，覆盖同名）: ${target}` : `${bk}清空目标目录: ${target}` })
       if (preserved.length) changes.push({ kind: 'create', detail: `保留 ${preserved.length} 项` })
     }
-    changes.push({ kind: 'create', detail: `解压导入到 ${target}` })
+    changes.push({ kind: 'create', detail: `${merge ? '叠加解压' : '解压导入'}到 ${target}` })
     return { noop: false, changes }
   },
 
@@ -132,7 +150,7 @@ export const importExecutor: RuleExecutor<ImportRule> = {
       fs.mkdirSync(target, { recursive: true })
       const dest = path.join(target, filename)
       if (fs.existsSync(dest)) {
-        if (doBackup) backupToStore(ctx.baseDir, dest)
+        if (doBackup) backupOnce(ctx, dest)
         // 目标是文件：copyFileSync 原地覆盖即可（不删文件节点，更稳）；是目录才需先删
         if (fs.statSync(dest).isDirectory()) removePath(dest)
       }
@@ -153,8 +171,9 @@ export const importExecutor: RuleExecutor<ImportRule> = {
           fs.cpSync(abs, dst, { recursive: true })
         }
       }
-      if (doBackup) backupToStore(ctx.baseDir, target)
-      clearDirContents(target)
+      if (doBackup) backupOnce(ctx, target)
+      // merge=不清空，直接叠加覆盖同名；replace=清空后解压
+      if ((rule.mode ?? 'replace') === 'replace') clearDirContents(target)
     }
     fs.mkdirSync(target, { recursive: true })
 
@@ -184,6 +203,6 @@ export const importExecutor: RuleExecutor<ImportRule> = {
       fs.rmSync(tmpDir, { recursive: true, force: true })
     }
 
-    return `已解压 ${total} 个文件到 ${target}`
+    return `已${(rule.mode ?? 'replace') === 'merge' ? '叠加' : '解压'} ${total} 个文件到 ${target}`
   },
 }

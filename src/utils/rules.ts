@@ -6,7 +6,7 @@ export function newRule(type: RuleType): Rule {
     case 'pack':
       return { ...base, type, source: '', output: '', excludes: [] }
     case 'import':
-      return { ...base, type, zip: '', target: '', preserve: [], rename: '', backup: true }
+      return { ...base, type, zip: '', target: '', preserve: [], rename: '', backup: true, mode: 'replace' }
     case 'json':
       return { ...base, type, file: '', op: 'upsert', data: {}, preserve: [] }
     case 'env':
@@ -33,7 +33,7 @@ export function ruleSummary(r: Rule): string {
     case 'pack':
       return `${r.source} → ${r.output}`
     case 'import':
-      return `${r.zip} → ${r.target}`
+      return `${r.zip} → ${r.target}${r.mode === 'merge' ? ' [叠加]' : ''}`
     case 'json': {
       const keep = r.preserve?.length ? ` · 保留 ${r.preserve.length} 项` : ''
       return `${r.file} (${r.op})${keep}`

@@ -14,6 +14,8 @@ export interface PackRule extends RuleBase {
   excludes: string[]
 }
 
+export type ImportMode = 'replace' | 'merge'
+
 export interface ImportRule extends RuleBase {
   type: 'import'
   zip: string
@@ -22,6 +24,8 @@ export interface ImportRule extends RuleBase {
   rename: string
   /** 导入前是否备份到 exe 目录 backups/；缺省时回退到全局设置 backupBeforeImport */
   backup?: boolean
+  /** replace(默认)=清空目标后解压；merge=不清空，直接叠加覆盖同名 */
+  mode?: ImportMode
 }
 
 export type JsonOp = 'append' | 'modify' | 'upsert' | 'overwrite'

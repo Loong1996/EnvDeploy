@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import type { EnvOp, EnvScope, JsonOp, PathPosition, Rule, RunShell } from '@shared/types'
+import type { EnvOp, EnvScope, ImportMode, JsonOp, PathPosition, Rule, RunShell } from '@shared/types'
 import Modal from './Modal'
 import TagInput from './TagInput'
 import VarReference from './VarReference'
@@ -140,6 +140,12 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
           </Field>
           <Field label="目标目录（支持 ${VAR} 环境变量）">
             <PathRow value={draft.target} onChange={v => patch({ target: v })} pick="dir" placeholder="${USERPROFILE}/.claude" />
+          </Field>
+          <Field label="写入方式">
+            <select value={draft.mode ?? 'replace'} onChange={e => patch({ mode: e.target.value as ImportMode })}>
+              <option value="replace">替换 — 清空目标后解压（默认）</option>
+              <option value="merge">叠加 — 不清空，覆盖同名、保留其余（多个 zip 合并到同一文件夹）</option>
+            </select>
           </Field>
           <Field label="重命名（仅非 zip 单文件生效，留空保持原名）">
             <input value={draft.rename} onChange={e => patch({ rename: e.target.value })} />
