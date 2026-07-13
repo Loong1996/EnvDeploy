@@ -5,6 +5,10 @@ export interface RuleBase {
   type: RuleType
   name: string
   enabled: boolean
+  /** 通用:选任意人员都执行。缺省(老数据)加载时规范化为 true */
+  common?: boolean
+  /** 归属人员 id 列表;仅当 common=false 时生效。缺省规范化为 [] */
+  people?: string[]
 }
 
 export interface PackRule extends RuleBase {
@@ -75,15 +79,21 @@ export interface Settings {
   backupBeforeImport: boolean
 }
 
+export interface Person {
+  id: string
+  name: string
+}
+
 export interface AppConfig {
   version: number
+  people: Person[]
   rules: Rule[]
   settings: Settings
   selectionMemory: {
     pack: Record<string, boolean>
     deploy: Record<string, boolean>
   }
-  uiState: { page?: string }
+  uiState: { page?: string; packPerson?: string; deployPerson?: string }
 }
 
 export interface RuleResult {
