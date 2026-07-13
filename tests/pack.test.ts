@@ -88,6 +88,16 @@ describe('packExecutor', () => {
       .rejects.toThrow('源路径不存在')
   })
 
+  it('输出落在源目录内被拒绝（防自包含无限增长）', async () => {
+    write('a.txt')
+    // baseDir=tmp，源=tmp（则输出 tmp/packages/out.zip 落在源内）
+    await expect(packExecutor.execute(rule({ source: tmp, output: 'out.zip' }), ctx()))
+      .rejects.toThrow('输出文件不能位于源目录内')
+    // plan 同样拦截
+    await expect(packExecutor.plan(rule({ source: tmp, output: 'out.zip' }), ctx()))
+      .rejects.toThrow('输出文件不能位于源目录内')
+  })
+
   it('validate 校验必填', () => {
     expect(packExecutor.validate(rule({ source: ' ' }))).toContain('源路径不能为空')
     expect(packExecutor.validate(rule({ output: '' }))).toContain('输出文件不能为空')

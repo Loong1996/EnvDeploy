@@ -192,6 +192,25 @@ describe('importExecutor', () => {
       .rejects.toThrow('源文件不存在')
   })
 
+  it('目标目录含程序数据目录(baseDir)被拒绝（防自包含无限增长）', async () => {
+    write('zipsrc/a.txt')
+    await makeZip()
+    // baseDir=tmp；目标设为 tmp（含 packages/backups）→ 备份自包含
+    await expect(importExecutor.execute(rule({ target: tmp }), ctx(true)))
+      .rejects.toThrow('目标目录不能是本工具所在目录或其上级')
+    // 目标为 baseDir 的上级同样拒绝
+    await expect(importExecutor.execute(rule({ target: path.dirname(tmp) }), ctx(true)))
+      .rejects.toThrow('目标目录不能是本工具所在目录或其上级')
+  })
+
+  it('源压缩包位于目标目录内被拒绝（替换会删掉源）', async () => {
+    write('zipsrc/a.txt')
+    await makeZip()
+    // 源解析为 tmp/packages/pkg.zip；目标设为 tmp/packages → 源在目标内
+    await expect(importExecutor.execute(rule({ target: path.join(tmp, 'packages') }), ctx()))
+      .rejects.toThrow('源压缩包位于目标目录内')
+  })
+
   it('远程 URL 源报暂不支持(扩展预留)', async () => {
     await expect(importExecutor.execute(rule({ zip: 'https://x.com/a.zip' }), ctx()))
       .rejects.toThrow('暂不支持远程 zip 源')

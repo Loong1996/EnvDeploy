@@ -7,7 +7,20 @@ import type { ExecContext, RuleExecutor } from '../executor'
 import { expandVars } from '../vars'
 import { normalizePatterns } from '../match'
 import { collectPreserved } from '../fswalk'
-import { resolvePackagePath } from '../paths'
+import { resolvePackagePath, isInsideOrEqual } from '../paths'
+
+/**
+ * 阻止路径自包含：目标目录若等于/包含程序数据目录（baseDir，内含 packages/backups），
+ * 备份会把目录复制进自己的子目录 → 自我嵌套、无限增长；源压缩包若在目标内，替换导入会先清空目标而删掉源。
+ */
+function guardImportPaths(baseDir: string, src: string, target: string): void {
+  if (isInsideOrEqual(baseDir, target)) {
+    throw new Error(`目标目录不能是本工具所在目录或其上级：${target} 含程序数据目录 ${baseDir}（备份/packages 会自包含、无限增长）`)
+  }
+  if (isInsideOrEqual(src, target)) {
+    throw new Error(`源压缩包位于目标目录内：${src}；替换导入会先清空目标而删掉源，请把源放到目标之外`)
+  }
+}
 
 function isZipFile(file: string): boolean {
   const buf = Buffer.alloc(4)
@@ -105,6 +118,7 @@ export const importExecutor: RuleExecutor<ImportRule> = {
     const src = resolvePackagePath(ctx.baseDir, expandVars(rule.zip))
     const target = path.normalize(expandVars(rule.target))
     if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error(`源文件不存在: ${src}`)
+    guardImportPaths(ctx.baseDir, src, target)
     const doBackup = rule.backup ?? ctx.settings.backupBeforeImport
 
     // 备份去重：返回该目标本次是否需要备份，并登记
@@ -144,6 +158,7 @@ export const importExecutor: RuleExecutor<ImportRule> = {
     const src = resolvePackagePath(ctx.baseDir, expandVars(rule.zip))
     const target = path.normalize(expandVars(rule.target))
     if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error(`源文件不存在: ${src}`)
+    guardImportPaths(ctx.baseDir, src, target)
     const doBackup = rule.backup ?? ctx.settings.backupBeforeImport
 
     // 非 zip:单文件复制

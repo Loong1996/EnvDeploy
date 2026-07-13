@@ -6,7 +6,14 @@ import type { RuleExecutor } from '../executor'
 import { expandVars } from '../vars'
 import { normalizePatterns } from '../match'
 import { collectFiles } from '../fswalk'
-import { resolvePackagePath } from '../paths'
+import { resolvePackagePath, isInsideOrEqual } from '../paths'
+
+/** 输出落在源目录内会导致自包含（把正在生成的包也纳入/覆盖），直接拒绝 */
+function guardOutputOutsideSource(source: string, output: string): void {
+  if (isInsideOrEqual(output, source)) {
+    throw new Error(`输出文件不能位于源目录内：${output} 在源 ${source} 之内（会自包含、体积失控），请把输出放到源目录之外`)
+  }
+}
 
 export const packExecutor: RuleExecutor<PackRule> = {
   type: 'pack',
@@ -23,6 +30,7 @@ export const packExecutor: RuleExecutor<PackRule> = {
     const source = path.normalize(expandVars(rule.source))
     const output = resolvePackagePath(ctx.baseDir, expandVars(rule.output))
     if (!fs.existsSync(source)) throw new Error(`源路径不存在: ${source}`)
+    guardOutputOutsideSource(source, output)
     if (!output.toLowerCase().endsWith('.zip')) {
       return { noop: false, changes: [{ kind: 'create', detail: `复制文件 → ${output}` }] }
     }
@@ -36,6 +44,7 @@ export const packExecutor: RuleExecutor<PackRule> = {
     const source = path.normalize(expandVars(rule.source))
     const output = resolvePackagePath(ctx.baseDir, expandVars(rule.output))
     if (!fs.existsSync(source)) throw new Error(`源路径不存在: ${source}`)
+    guardOutputOutsideSource(source, output)
     fs.mkdirSync(path.dirname(output), { recursive: true })
 
     if (!output.toLowerCase().endsWith('.zip')) {

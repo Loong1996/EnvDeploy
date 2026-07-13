@@ -3,7 +3,7 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { collectFiles, collectPreserved } from '../electron/core/fswalk'
-import { packagesDir, resolvePackagePath } from '../electron/core/paths'
+import { packagesDir, resolvePackagePath, isInsideOrEqual } from '../electron/core/paths'
 
 let tmp: string
 
@@ -72,5 +72,13 @@ describe('paths', () => {
   it('resolvePackagePath 相对路径挂到 packages,绝对路径原样', () => {
     expect(resolvePackagePath(tmp, 'a.zip')).toBe(path.join(tmp, 'packages', 'a.zip'))
     expect(resolvePackagePath(tmp, 'C:\\abs\\b.zip')).toBe(path.normalize('C:\\abs\\b.zip'))
+  })
+
+  it('isInsideOrEqual 判定自包含', () => {
+    const root = path.join(tmp, 'a')
+    expect(isInsideOrEqual(root, root)).toBe(true)                       // 相等
+    expect(isInsideOrEqual(path.join(root, 'b', 'c'), root)).toBe(true)  // 子路径
+    expect(isInsideOrEqual(root, path.join(root, 'b'))).toBe(false)      // 上级不在下级内
+    expect(isInsideOrEqual(path.join(tmp, 'x'), path.join(tmp, 'y'))).toBe(false) // 兄弟
   })
 })
