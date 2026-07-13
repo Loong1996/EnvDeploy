@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
-import type { Rule, RuleType, RuleTypeInfo } from '@shared/types'
+import type { Person, Rule, RuleType, RuleTypeInfo } from '@shared/types'
+import { ruleMatchesPerson } from '@shared/people'
 import RuleCard from './RuleCard'
 import { ruleSummary } from '../utils/rules'
 
@@ -8,6 +9,10 @@ interface Props {
   types: RuleTypeInfo[]
   showTypeFilter: boolean
   addTypes: RuleType[]
+  people: Person[]
+  personId: string | null
+  onSelectPerson(id: string | null): void
+  onManagePeople(): void
   onAdd(type: RuleType): void
   onEdit(rule: Rule): void
   onDelete(id: string): void
@@ -28,11 +33,12 @@ export default function RuleList(props: Props) {
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase()
     return props.rules.filter(r => {
+      if (!ruleMatchesPerson(r, props.personId)) return false
       if (typeFilter !== 'all' && r.type !== typeFilter) return false
       if (kw && !r.name.toLowerCase().includes(kw) && !ruleSummary(r).toLowerCase().includes(kw)) return false
       return true
     })
-  }, [props.rules, typeFilter, search])
+  }, [props.rules, props.personId, typeFilter, search])
 
   return (
     <div className="rule-list">
@@ -53,6 +59,20 @@ export default function RuleList(props: Props) {
             ))}
           </div>
         )}
+        <select
+          className="person-select"
+          value={props.personId ?? ''}
+          onChange={e => {
+            if (e.target.value === '__manage__') { props.onManagePeople(); return }
+            props.onSelectPerson(e.target.value === '' ? null : e.target.value)
+          }}
+        >
+          <option value="">👥 全部人员</option>
+          {props.people.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+          <option value="__manage__">管理人员…</option>
+        </select>
         <input
           className="search"
           placeholder="搜索名称 / 路径…"

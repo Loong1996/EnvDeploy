@@ -357,3 +357,13 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .keypath-row { display: flex; gap: 8px; }
 .keypath-row input { flex: 1; }
 .keypath-add { align-self: flex-start; }
+
+/* ── 人员选择器 ───────────────────────────────────── */
+.person-select {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--panel, #1a1d24);
+  color: inherit;
+  border: 1px solid var(--border, #2a2f3a);
+}

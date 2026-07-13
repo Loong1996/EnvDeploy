@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { AppConfig, ProgressEvent, Rule, RulePlan, RuleResult, RuleTypeInfo } from '@shared/types'
+import type { AppConfig, Person, ProgressEvent, Rule, RulePlan, RuleResult, RuleTypeInfo } from '@shared/types'
+import { ruleMatchesPerson } from '@shared/people'
 import LogsPage from './pages/LogsPage'
 import RuleList from './components/RuleList'
 import RuleEditor from './components/RuleEditor'
@@ -31,6 +32,7 @@ export default function App() {
   const [results, setResults] = useState<RuleResult[] | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>([])
+  const [managingPeople, setManagingPeople] = useState(false)
 
   useEffect(() => {
     void window.api.loadConfig().then(cfg => {
@@ -59,6 +61,19 @@ export default function App() {
 
   const packRules = useMemo(() => (config?.rules ?? []).filter(r => r.type === 'pack'), [config])
   const deployRules = useMemo(() => (config?.rules ?? []).filter(r => r.type !== 'pack'), [config])
+
+  const people = config?.people ?? []
+  const packPerson = useMemo(() => {
+    const id = config?.uiState.packPerson
+    return id && people.some(p => p.id === id) ? id : null
+  }, [config?.uiState.packPerson, people])
+  const deployPerson = useMemo(() => {
+    const id = config?.uiState.deployPerson
+    return id && people.some(p => p.id === id) ? id : null
+  }, [config?.uiState.deployPerson, people])
+
+  const selectPerson = (key: 'packPerson' | 'deployPerson', id: string | null): void =>
+    update(c => ({ ...c, uiState: { ...c.uiState, [key]: id ?? undefined } }))
 
   const runIds = useCallback(async (ids: string[]) => {
     if (!ids.length) return
@@ -183,6 +198,10 @@ export default function App() {
           {page === 'pack' && (
             <RuleList
               rules={packRules}
+              people={people}
+              personId={packPerson}
+              onSelectPerson={id => selectPerson('packPerson', id)}
+              onManagePeople={() => setManagingPeople(true)}
               types={types.filter(t => t.type === 'pack')}
               showTypeFilter={false}
               addTypes={['pack']}
@@ -193,6 +212,10 @@ export default function App() {
           {page === 'deploy' && (
             <RuleList
               rules={deployRules}
+              people={people}
+              personId={deployPerson}
+              onSelectPerson={id => selectPerson('deployPerson', id)}
+              onManagePeople={() => setManagingPeople(true)}
               types={types.filter(t => t.type !== 'pack')}
               showTypeFilter
               addTypes={['import', 'json', 'env', 'run', 'download']}
@@ -225,7 +248,8 @@ export default function App() {
           }
           rules={
             selecting === 'export' ? config.rules
-              : (selecting === 'pack' ? packRules : deployRules).filter(r => r.enabled)
+              : (selecting === 'pack' ? packRules : deployRules)
+                  .filter(r => r.enabled && ruleMatchesPerson(r, selecting === 'pack' ? packPerson : deployPerson))
           }
           memory={selecting === 'export' ? {} : config.selectionMemory[selecting === 'pack' ? 'pack' : 'deploy']}
           confirmLabel={selecting === 'preview' ? '预览' : selecting === 'export' ? '导出' : '执行'}
