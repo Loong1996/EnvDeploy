@@ -34,6 +34,19 @@ describe('collectFiles', () => {
     write('sub/b.txt')
     expect(collectFiles(tmp, []).length).toBe(2)
   })
+  it('./ 锚定只排根层文件，子目录同名保留', () => {
+    write('foo.log')
+    write('sub/foo.log')
+    const rels = collectFiles(tmp, ['./foo.log']).map(f => f.rel.replace(/\\/g, '/')).sort()
+    expect(rels).toEqual(['sub/foo.log'])
+  })
+  it('裸名字排除所有层级同名（对比 ./ 锚定）', () => {
+    write('foo.log')
+    write('sub/foo.log')
+    write('keep.txt')
+    const rels = collectFiles(tmp, ['foo.log']).map(f => f.rel.replace(/\\/g, '/')).sort()
+    expect(rels).toEqual(['keep.txt'])
+  })
 })
 
 describe('collectPreserved', () => {

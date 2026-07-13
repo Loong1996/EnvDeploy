@@ -51,6 +51,17 @@ function PathRow({ value, onChange, pick, placeholder }: {
   )
 }
 
+/** 匹配规则用法注解：解释裸名 / 相对路径 / ./ 锚定三种写法（排除与保留通用） */
+function MatchHint({ root }: { root: string }) {
+  return (
+    <div className="dim match-hint">
+      <div>· 裸名字 <code>node_modules</code>、<code>*.log</code>：按名字匹配，{root}及所有子目录中同名都算</div>
+      <div>· 含 <code>/</code> 的相对路径 <code>logs/cache</code>：从{root}根定位那一个（含子目录，不影响其它同名）</div>
+      <div>· <code>./</code> 前缀 <code>./config.json</code>：仅{root}根这一层，不波及子目录同名</div>
+    </div>
+  )
+}
+
 export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<Rule>(() => structuredClone(rule))
   const [jsonText, setJsonText] = useState(() =>
@@ -182,6 +193,7 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
           </Field>
           <Field label="排除（文件/目录名或相对路径，支持 * 通配符）">
             <TagInput value={draft.excludes} onChange={v => patch({ excludes: v })} placeholder="输入后回车添加" />
+            <MatchHint root="源目录" />
           </Field>
         </>
       )}
@@ -205,6 +217,7 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
           </Field>
           <Field label="保留（导入时保留目标目录中匹配的文件/目录，优先于 zip 内容）">
             <TagInput value={draft.preserve} onChange={v => patch({ preserve: v })} placeholder="输入后回车添加" />
+            <MatchHint root="目标目录" />
           </Field>
           <label className="check-item">
             <input type="checkbox" checked={draft.backup ?? true} onChange={e => patch({ backup: e.target.checked })} />

@@ -32,4 +32,27 @@ describe('isExcluded', () => {
   it('空模式列表永远不匹配', () => {
     expect(isExcluded('a.txt', 'a.txt', [])).toBe(false)
   })
+
+  describe('./ 锚定到根', () => {
+    it('./ 前缀只匹配根层文件，不波及子目录同名', () => {
+      expect(isExcluded('foo.log', 'foo.log', ['./foo.log'])).toBe(true)
+      expect(isExcluded('sub/foo.log', 'foo.log', ['./foo.log'])).toBe(false)
+    })
+    it('裸名字仍匹配所有层级同名（保持原行为）', () => {
+      expect(isExcluded('foo.log', 'foo.log', ['foo.log'])).toBe(true)
+      expect(isExcluded('sub/foo.log', 'foo.log', ['foo.log'])).toBe(true)
+    })
+    it('./ 前缀锚定根层目录，不波及子目录同名', () => {
+      expect(isExcluded('logs', 'logs', ['./logs'])).toBe(true)
+      expect(isExcluded('sub/logs', 'logs', ['./logs'])).toBe(false)
+    })
+    it('./ 后接多段路径等价于该相对路径', () => {
+      expect(isExcluded('a/b.txt', 'b.txt', ['./a/b.txt'])).toBe(true)
+      expect(isExcluded('x/a/b.txt', 'b.txt', ['./a/b.txt'])).toBe(false)
+    })
+    it('./ 前缀支持通配符', () => {
+      expect(isExcluded('a.log', 'a.log', ['./*.log'])).toBe(true)
+      expect(isExcluded('sub/a.log', 'a.log', ['./*.log'])).toBe(false)
+    })
+  })
 })
