@@ -11,7 +11,6 @@ interface Props {
   addTypes: RuleType[]
   people: Person[]
   personId: string | null
-  onSelectPerson(id: string | null): void
   onAdd(type: RuleType): void
   onEdit(rule: Rule): void
   onDelete(id: string): void
@@ -58,16 +57,6 @@ export default function RuleList(props: Props) {
             ))}
           </div>
         )}
-        <select
-          className="person-select"
-          value={props.personId ?? ''}
-          onChange={e => props.onSelectPerson(e.target.value === '' ? null : e.target.value)}
-        >
-          <option value="">👥 全部人员</option>
-          {props.people.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
         <input
           className="search"
           placeholder="搜索名称 / 路径…"

@@ -64,17 +64,14 @@ export default function App() {
   const deployRules = useMemo(() => (config?.rules ?? []).filter(r => r.type !== 'pack'), [config])
 
   const people = config?.people ?? []
-  const packPerson = useMemo(() => {
-    const id = config?.uiState.packPerson
+  // 全局人员筛选:一个下拉作用于两页(存的 id 不在名单则回退「全部」)
+  const person = useMemo(() => {
+    const id = config?.uiState.person
     return id && people.some(p => p.id === id) ? id : null
-  }, [config?.uiState.packPerson, people])
-  const deployPerson = useMemo(() => {
-    const id = config?.uiState.deployPerson
-    return id && people.some(p => p.id === id) ? id : null
-  }, [config?.uiState.deployPerson, people])
+  }, [config?.uiState.person, people])
 
-  const selectPerson = (key: 'packPerson' | 'deployPerson', id: string | null): void =>
-    update(c => ({ ...c, uiState: { ...c.uiState, [key]: id ?? undefined } }))
+  const selectPerson = (id: string | null): void =>
+    update(c => ({ ...c, uiState: { ...c.uiState, person: id ?? undefined } }))
 
   const runIds = useCallback(async (ids: string[]) => {
     if (!ids.length) return
@@ -169,7 +166,18 @@ export default function App() {
         <button className="hero hero-pack" onClick={() => setSelecting('pack')}>一键打包</button>
         <button className="hero hero-deploy" onClick={() => setSelecting('deploy')}>一键部署</button>
         <button className="hero hero-preview" onClick={() => setSelecting('preview')}>预览</button>
-        <button className="btn" title="新增/改名/删除人员" onClick={() => setManagingPeople(true)}>👥 管理人员</button>
+        <select
+          className="person-select"
+          title="按人员筛选(作用于两页的列表与一键操作)"
+          value={person ?? ''}
+          onChange={e => selectPerson(e.target.value === '' ? null : e.target.value)}
+        >
+          <option value="">👥 全部人员</option>
+          {people.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <button className="btn" title="新增/改名/删除人员" onClick={() => setManagingPeople(true)}>管理人员</button>
         <div className="spacer" />
         {!admin && (
           <span className="admin-warn" title="修改系统环境变量需要管理员权限，请以管理员身份重新运行">
@@ -201,8 +209,7 @@ export default function App() {
             <RuleList
               rules={packRules}
               people={people}
-              personId={packPerson}
-              onSelectPerson={id => selectPerson('packPerson', id)}
+              personId={person}
               types={types.filter(t => t.type === 'pack')}
               showTypeFilter={false}
               addTypes={['pack']}
@@ -214,8 +221,7 @@ export default function App() {
             <RuleList
               rules={deployRules}
               people={people}
-              personId={deployPerson}
-              onSelectPerson={id => selectPerson('deployPerson', id)}
+              personId={person}
               types={types.filter(t => t.type !== 'pack')}
               showTypeFilter
               addTypes={['import', 'json', 'env', 'run', 'download']}
@@ -250,7 +256,7 @@ export default function App() {
           rules={
             selecting === 'export' ? config.rules
               : (selecting === 'pack' ? packRules : deployRules)
-                  .filter(r => r.enabled && ruleMatchesPerson(r, selecting === 'pack' ? packPerson : deployPerson))
+                  .filter(r => r.enabled && ruleMatchesPerson(r, person))
           }
           memory={selecting === 'export' ? {} : config.selectionMemory[selecting === 'pack' ? 'pack' : 'deploy']}
           confirmLabel={selecting === 'preview' ? '预览' : selecting === 'export' ? '导出' : '执行'}

@@ -93,7 +93,7 @@ export interface AppConfig {
     pack: Record<string, boolean>
     deploy: Record<string, boolean>
   }
-  uiState: { page?: string; packPerson?: string; deployPerson?: string }
+  uiState: { page?: string; person?: string }
 }
 
 export interface RuleResult {
