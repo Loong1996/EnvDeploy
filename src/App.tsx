@@ -169,6 +169,7 @@ export default function App() {
         <button className="hero hero-pack" onClick={() => setSelecting('pack')}>一键打包</button>
         <button className="hero hero-deploy" onClick={() => setSelecting('deploy')}>一键部署</button>
         <button className="hero hero-preview" onClick={() => setSelecting('preview')}>预览</button>
+        <button className="btn" title="新增/改名/删除人员" onClick={() => setManagingPeople(true)}>👥 管理人员</button>
         <div className="spacer" />
         {!admin && (
           <span className="admin-warn" title="修改系统环境变量需要管理员权限，请以管理员身份重新运行">
@@ -202,7 +203,6 @@ export default function App() {
               people={people}
               personId={packPerson}
               onSelectPerson={id => selectPerson('packPerson', id)}
-              onManagePeople={() => setManagingPeople(true)}
               types={types.filter(t => t.type === 'pack')}
               showTypeFilter={false}
               addTypes={['pack']}
@@ -216,7 +216,6 @@ export default function App() {
               people={people}
               personId={deployPerson}
               onSelectPerson={id => selectPerson('deployPerson', id)}
-              onManagePeople={() => setManagingPeople(true)}
               types={types.filter(t => t.type !== 'pack')}
               showTypeFilter
               addTypes={['import', 'json', 'env', 'run', 'download']}

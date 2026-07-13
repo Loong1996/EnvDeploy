@@ -374,7 +374,20 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .people-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .people-row input { flex: 1; }
 
-.people-pick { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
+/* ── 部署对象:通用/人员平铺胶囊(通用与具名互斥) ── */
+.chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all .12s;
+}
+.chip:hover { border-color: var(--accent); color: var(--text); }
+.chip-on { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ── 规则卡片归属徽标 ─────────────────────────────── */
-.badge-person { background: var(--border, #2a2f3a); color: var(--muted, #9aa4b2); }
+.badge-person { background: var(--border); color: var(--text-dim); }

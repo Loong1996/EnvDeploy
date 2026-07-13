@@ -12,7 +12,6 @@ interface Props {
   people: Person[]
   personId: string | null
   onSelectPerson(id: string | null): void
-  onManagePeople(): void
   onAdd(type: RuleType): void
   onEdit(rule: Rule): void
   onDelete(id: string): void
@@ -62,16 +61,12 @@ export default function RuleList(props: Props) {
         <select
           className="person-select"
           value={props.personId ?? ''}
-          onChange={e => {
-            if (e.target.value === '__manage__') { props.onManagePeople(); return }
-            props.onSelectPerson(e.target.value === '' ? null : e.target.value)
-          }}
+          onChange={e => props.onSelectPerson(e.target.value === '' ? null : e.target.value)}
         >
           <option value="">👥 全部人员</option>
           {props.people.map(p => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
-          <option value="__manage__">管理人员…</option>
         </select>
         <input
           className="search"

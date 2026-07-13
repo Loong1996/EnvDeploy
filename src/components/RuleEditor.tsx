@@ -126,41 +126,36 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
       </Field>
 
       <Field label="部署对象">
-        <label className="check-item">
-          <input
-            type="checkbox"
-            checked={draft.common ?? true}
-            onChange={e => patch(e.target.checked ? { common: true, people: [] } : { common: false })}
-          />
-          <span>通用（所有人员都部署）</span>
-        </label>
-        {!draft.common && (
-          people.length === 0 ? (
-            <div className="dim">尚未创建人员，可在列表页「人员 › 管理人员」添加</div>
-          ) : (
-            <div className="people-pick">
-              {people.map(p => {
-                const on = (draft.people ?? []).includes(p.id)
-                return (
-                  <label key={p.id} className="check-item">
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={e =>
-                        patch({
-                          people: e.target.checked
-                            ? [...(draft.people ?? []), p.id]
-                            : (draft.people ?? []).filter(x => x !== p.id),
-                        })
-                      }
-                    />
-                    <span>{p.name}</span>
-                  </label>
-                )
-              })}
-            </div>
-          )
-        )}
+        <div className="chip-group">
+          <button
+            type="button"
+            className={draft.common ? 'chip chip-on' : 'chip'}
+            onClick={() => patch({ common: true, people: [] })}
+          >
+            通用（所有人员）
+          </button>
+          {people.map(p => {
+            const on = !draft.common && (draft.people ?? []).includes(p.id)
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className={on ? 'chip chip-on' : 'chip'}
+                onClick={() =>
+                  patch({
+                    common: false,
+                    people: on
+                      ? (draft.people ?? []).filter(x => x !== p.id)
+                      : [...(draft.people ?? []), p.id],
+                  })
+                }
+              >
+                {p.name}
+              </button>
+            )
+          })}
+        </div>
+        {people.length === 0 && <div className="dim">尚未创建人员，可在顶部「管理人员」添加</div>}
       </Field>
 
       {draft.type === 'pack' && (
