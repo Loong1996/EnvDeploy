@@ -9,6 +9,7 @@ import PreviewDialog from './components/PreviewDialog'
 import RunOverlay from './components/RunOverlay'
 import SettingsDialog from './components/SettingsDialog'
 import PeopleManager from './components/PeopleManager'
+import PersonPrompt from './components/PersonPrompt'
 import { moveRule, newRule } from './utils/rules'
 
 export interface LogEntry {
@@ -34,12 +35,14 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [managingPeople, setManagingPeople] = useState(false)
+  const [askPerson, setAskPerson] = useState(false)
 
   useEffect(() => {
     void window.api.loadConfig().then(cfg => {
       setConfig(cfg)
       const p = cfg.uiState.page
       if (p === 'pack' || p === 'deploy' || p === 'logs') setPage(p)
+      if (cfg.people.length > 0) setAskPerson(true) // 有人员名单时,启动询问本次使用人员
     })
     void window.api.ruleTypes().then(setTypes)
     void window.api.isAdmin().then(setAdmin)
@@ -287,6 +290,12 @@ export default function App() {
             setLogs(l => [{ time: new Date().toLocaleString(), ok, summary, details: [] }, ...l])
           }
           onClose={() => setShowSettings(false)}
+        />
+      )}
+      {askPerson && (
+        <PersonPrompt
+          people={config.people}
+          onConfirm={id => { selectPerson(id); setAskPerson(false) }}
         />
       )}
       {managingPeople && (

@@ -389,5 +389,8 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .chip:hover { border-color: var(--accent); color: var(--text); }
 .chip-on { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+/* 启动「选择使用人员」弹窗的选项 */
+.person-prompt { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
 /* ── 规则卡片归属徽标 ─────────────────────────────── */
 .badge-person { background: var(--border); color: var(--text-dim); }
