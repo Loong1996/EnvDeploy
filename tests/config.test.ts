@@ -17,9 +17,10 @@ afterEach(() => {
 describe('config', () => {
   it('defaultConfig 结构完整且规则默认为空', () => {
     const cfg = defaultConfig()
-    expect(cfg.version).toBe(1)
+    expect(cfg.version).toBe(2)
     expect(cfg.rules.length).toBe(0)
     expect(cfg.settings.backupBeforeImport).toBe(true)
+    expect(cfg.people).toEqual([])
   })
 
   it('loadConfig 首次调用生成默认配置并落盘', () => {
@@ -44,6 +45,21 @@ describe('config', () => {
     expect(cfg.settings.backupBeforeImport).toBe(true)
     expect(cfg.selectionMemory).toEqual({ pack: {}, deploy: {} })
     expect(cfg.uiState).toEqual({})
+  })
+
+  it('加载老规则(无 common/people)规范化为通用,补 people 名单', () => {
+    fs.writeFileSync(
+      configPath(tmp),
+      JSON.stringify({
+        version: 1,
+        rules: [{ id: 'r1', type: 'env', name: 'old', enabled: true, key: 'K', value: 'V', op: 'set' }],
+      }),
+      'utf8',
+    )
+    const cfg = loadConfig(tmp)
+    expect(cfg.people).toEqual([])
+    expect(cfg.rules[0].common).toBe(true)
+    expect(cfg.rules[0].people).toEqual([])
   })
 
   it('损坏的 config.json 被移到一旁并回退默认配置', () => {

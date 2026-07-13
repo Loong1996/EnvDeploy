@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { normalizeRule } from '@shared/people'
 import type { AppConfig, BackupInfo } from '@shared/types'
 
 const CONFIG_FILE = 'config.json'
@@ -8,7 +9,8 @@ const MAX_BACKUPS = 10
 
 export function defaultConfig(): AppConfig {
   return {
-    version: 1,
+    version: 2,
+    people: [],
     rules: [],
     settings: { backupBeforeImport: true },
     selectionMemory: { pack: {}, deploy: {} },
@@ -39,7 +41,8 @@ export function loadConfig(baseDir: string): AppConfig {
   const def = defaultConfig()
   return {
     version: raw.version ?? def.version,
-    rules: Array.isArray(raw.rules) ? raw.rules : [],
+    people: Array.isArray(raw.people) ? raw.people : [],
+    rules: (Array.isArray(raw.rules) ? raw.rules : []).map(r => normalizeRule(r as never)),
     settings: { ...def.settings, ...raw.settings },
     selectionMemory: { pack: {}, deploy: {}, ...raw.selectionMemory },
     uiState: raw.uiState ?? {},
