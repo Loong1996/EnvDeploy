@@ -1,9 +1,10 @@
-import type { Rule } from '@shared/types'
+import type { Person, Rule } from '@shared/types'
 import { ruleSummary } from '../utils/rules'
 
 interface Props {
   rule: Rule
   typeLabel: string
+  people: Person[]
   onEdit(): void
   onDelete(): void
   onRun(): void
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export default function RuleCard({
-  rule, typeLabel, onEdit, onDelete, onRun, onToggle, onDragStart, onDropOn,
+  rule, typeLabel, people, onEdit, onDelete, onRun, onToggle, onDragStart, onDropOn,
 }: Props) {
   return (
     <div
@@ -26,6 +27,14 @@ export default function RuleCard({
       <div className="card-main">
         <div className="card-title">
           <span className={`badge badge-${rule.type}`}>{typeLabel}</span>
+          <span className="badge badge-person">
+            {rule.common
+              ? '通用'
+              : (rule.people ?? [])
+                  .map(id => people.find(p => p.id === id)?.name)
+                  .filter(Boolean)
+                  .join('、') || '未指派'}
+          </span>
           <span className="name">{rule.name || '(未命名)'}</span>
         </div>
         <div className="card-summary" title={ruleSummary(rule)}>{ruleSummary(rule)}</div>

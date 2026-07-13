@@ -104,6 +104,7 @@ export default function RuleList(props: Props) {
           key={rule.id}
           rule={rule}
           typeLabel={labelOf(rule.type)}
+          people={props.people}
           onEdit={() => props.onEdit(rule)}
           onDelete={() => props.onDelete(rule.id)}
           onRun={() => props.onRun(rule.id)}
