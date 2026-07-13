@@ -12,6 +12,8 @@ describe('newRule', () => {
     expect(newRule('json')).toMatchObject({ type: 'json', op: 'upsert', data: {} })
     expect(newRule('env')).toMatchObject({ type: 'env', op: 'set' })
     expect(newRule('pack').id).not.toBe(newRule('pack').id)
+    expect(newRule('env')).toMatchObject({ common: true, people: [] })
+    expect(newRule('pack')).toMatchObject({ common: true, people: [] })
   })
 })
 

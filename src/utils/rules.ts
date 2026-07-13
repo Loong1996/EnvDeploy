@@ -1,7 +1,7 @@
 import type { Rule, RuleType } from '@shared/types'
 
 export function newRule(type: RuleType): Rule {
-  const base = { id: crypto.randomUUID(), name: '', enabled: true }
+  const base = { id: crypto.randomUUID(), name: '', enabled: true, common: true, people: [] as string[] }
   switch (type) {
     case 'pack':
       return { ...base, type, source: '', output: '', excludes: [] }
