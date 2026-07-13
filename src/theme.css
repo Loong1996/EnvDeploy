@@ -373,3 +373,5 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
 .people-add input { flex: 1; }
 .people-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 .people-row input { flex: 1; }
+
+.people-pick { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }

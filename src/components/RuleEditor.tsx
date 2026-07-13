@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import type { EnvOp, EnvScope, ImportMode, JsonOp, PathPosition, Rule, RunShell } from '@shared/types'
+import type { EnvOp, EnvScope, ImportMode, JsonOp, PathPosition, Person, Rule, RunShell } from '@shared/types'
 import Modal from './Modal'
 import TagInput from './TagInput'
 import VarReference from './VarReference'
@@ -9,6 +9,7 @@ interface Props {
   rule: Rule
   isNew: boolean
   typeLabel: string
+  people: Person[]
   onSave(r: Rule): void
   onClose(): void
 }
@@ -50,7 +51,7 @@ function PathRow({ value, onChange, pick, placeholder }: {
   )
 }
 
-export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: Props) {
+export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<Rule>(() => structuredClone(rule))
   const [jsonText, setJsonText] = useState(() =>
     rule.type === 'json' ? JSON.stringify(rule.data, null, 2) : '',
@@ -64,6 +65,9 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
     const errs: string[] = []
     const final = structuredClone(draft)
     if (!final.name.trim()) errs.push('名称不能为空')
+    if (!final.common && (final.people ?? []).length === 0) {
+      errs.push('请勾选「通用」或至少指定一个人员')
+    }
     switch (final.type) {
       case 'pack':
         if (!final.source.trim()) errs.push('源路径不能为空')
@@ -119,6 +123,44 @@ export default function RuleEditor({ rule, isNew, typeLabel, onSave, onClose }: 
     >
       <Field label="名称">
         <input value={draft.name} placeholder="给这条规则起个名字" onChange={e => patch({ name: e.target.value })} />
+      </Field>
+
+      <Field label="部署对象">
+        <label className="check-item">
+          <input
+            type="checkbox"
+            checked={draft.common ?? true}
+            onChange={e => patch({ common: e.target.checked })}
+          />
+          <span>通用（所有人员都部署）</span>
+        </label>
+        {!draft.common && (
+          people.length === 0 ? (
+            <div className="dim">尚未创建人员，可在列表页「人员 › 管理人员」添加</div>
+          ) : (
+            <div className="people-pick">
+              {people.map(p => {
+                const on = (draft.people ?? []).includes(p.id)
+                return (
+                  <label key={p.id} className="check-item">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={e =>
+                        patch({
+                          people: e.target.checked
+                            ? [...(draft.people ?? []), p.id]
+                            : (draft.people ?? []).filter(x => x !== p.id),
+                        })
+                      }
+                    />
+                    <span>{p.name}</span>
+                  </label>
+                )
+              })}
+            </div>
+          )
+        )}
       </Field>
 
       {draft.type === 'pack' && (

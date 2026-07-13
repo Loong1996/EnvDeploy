@@ -235,6 +235,7 @@ export default function App() {
           rule={editing.rule}
           isNew={editing.isNew}
           typeLabel={types.find(t => t.type === editing.rule.type)?.label ?? editing.rule.type}
+          people={people}
           onSave={saveRule}
           onClose={() => setEditing(null)}
         />
