@@ -7,17 +7,20 @@ export function ruleMatchesPerson(rule: Rule, personId: string | null): boolean 
   return (rule.people ?? []).includes(personId)
 }
 
-/** 规范化:common 保证为 boolean(未显式给定时按「无 people 即通用」推断),people 保证为数组 */
+/**
+ * 规范化:common 保证为 boolean(未显式给定时按「无 people 即通用」推断),people 保证为数组。
+ * 通用规则不保留人员标签(people 置空),避免「通用 + 具名」共存导致导出冗余、卡片歧义。
+ */
 export function normalizeRule<T extends Rule>(rule: T): T {
-  const people = Array.isArray(rule.people) ? rule.people : []
-  const common = typeof rule.common === 'boolean' ? rule.common : people.length === 0
-  return { ...rule, common, people }
+  const raw = Array.isArray(rule.people) ? rule.people : []
+  const common = typeof rule.common === 'boolean' ? rule.common : raw.length === 0
+  return { ...rule, common, people: common ? [] : raw }
 }
 
-/** 追加一个人员(去空白;名称为空则原样返回,不改原数组) */
+/** 追加一个人员(去空白;名称为空或与现有人员同名则原样返回,不改原数组) */
 export function addPerson(people: Person[], id: string, name: string): Person[] {
   const n = name.trim()
-  if (!n) return people
+  if (!n || people.some(p => p.name === n)) return people
   return [...people, { id, name: n }]
 }
 

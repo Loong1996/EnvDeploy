@@ -19,8 +19,11 @@ export default function PeopleManager({ people, rules, onChange, onClose }: Prop
   }
   const rename = (id: string, v: string): void => onChange(renamePerson(people, id, v), rules)
   const remove = (id: string): void => {
-    const count = rules.filter(r => (r.people ?? []).includes(id)).length
-    if (!confirm(`删除该人员将从 ${count} 条规则移除其标签。确定删除？`)) return
+    const tagged = rules.filter(r => (r.people ?? []).includes(id))
+    // 唯一归属:删除后 people 变空且非通用 → 规则变「未指派」,仅「全部」下可见
+    const orphan = tagged.filter(r => !r.common && (r.people ?? []).every(x => x === id)).length
+    const extra = orphan > 0 ? `，其中 ${orphan} 条将变为「未指派」（仅「全部」下可见）` : ''
+    if (!confirm(`删除该人员将从 ${tagged.length} 条规则移除其标签${extra}。确定删除？`)) return
     const out = removePerson(people, rules, id)
     onChange(out.people, out.rules)
   }

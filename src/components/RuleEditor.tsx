@@ -130,7 +130,7 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
           <input
             type="checkbox"
             checked={draft.common ?? true}
-            onChange={e => patch({ common: e.target.checked })}
+            onChange={e => patch(e.target.checked ? { common: true, people: [] } : { common: false })}
           />
           <span>通用（所有人员都部署）</span>
         </label>

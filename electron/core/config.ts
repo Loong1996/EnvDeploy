@@ -40,7 +40,7 @@ export function loadConfig(baseDir: string): AppConfig {
   }
   const def = defaultConfig()
   return {
-    version: raw.version ?? def.version,
+    version: def.version,
     people: Array.isArray(raw.people) ? raw.people : [],
     rules: (Array.isArray(raw.rules) ? raw.rules : []).map(r => normalizeRule(r as never)),
     settings: { ...def.settings, ...raw.settings },

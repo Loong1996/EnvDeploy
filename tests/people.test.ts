@@ -40,13 +40,19 @@ describe('normalizeRule', () => {
     expect(r.common).toBe(false)
     expect(r.people).toEqual([])
   })
+  it('common=true 时清空 people(不保留具名标签)', () => {
+    const r = normalizeRule(envRule({ common: true, people: ['a', 'b'] }))
+    expect(r.common).toBe(true)
+    expect(r.people).toEqual([])
+  })
 })
 
 describe('roster 增删改', () => {
   const base: Person[] = [{ id: 'a', name: '张三' }]
-  it('addPerson 追加,空白名原样返回', () => {
+  it('addPerson 追加,空白名/重名原样返回', () => {
     expect(addPerson(base, 'b', '李四')).toEqual([{ id: 'a', name: '张三' }, { id: 'b', name: '李四' }])
     expect(addPerson(base, 'b', '   ')).toEqual(base)
+    expect(addPerson(base, 'b', '张三')).toBe(base) // 重名不追加
   })
   it('renamePerson 改中目标,空白名原样返回', () => {
     expect(renamePerson(base, 'a', '张三丰')).toEqual([{ id: 'a', name: '张三丰' }])

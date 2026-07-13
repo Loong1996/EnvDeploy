@@ -57,6 +57,7 @@ describe('config', () => {
       'utf8',
     )
     const cfg = loadConfig(tmp)
+    expect(cfg.version).toBe(2) // 迁移后回写为当前版本
     expect(cfg.people).toEqual([])
     expect(cfg.rules[0].common).toBe(true)
     expect(cfg.rules[0].people).toEqual([])
