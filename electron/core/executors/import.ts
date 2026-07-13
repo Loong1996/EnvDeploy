@@ -69,9 +69,11 @@ function removePath(p: string, label = path.basename(p)): void {
 /**
  * 清空目录**内容**但保留目录本身：不去 rename/删除被占用的目录节点，
  * 只逐个删除里面的条目——目标目录被资源管理器/编辑器/监视器占用时更可能成功。
+ * keep（小写顶层名集合）中的条目「原地保留」，跳过删除——避免删掉被占用的保留项而报错。
  */
-function clearDirContents(dir: string): void {
+function clearDirContents(dir: string, keep: Set<string> = new Set()): void {
   for (const name of fs.readdirSync(dir)) {
+    if (keep.has(name.toLowerCase())) continue
     removePath(path.join(dir, name), name)
   }
 }
@@ -159,21 +161,31 @@ export const importExecutor: RuleExecutor<ImportRule> = {
       return `已复制文件到 ${dest}`
     }
 
-    // 暂存 preserve 匹配项
+    // 保留策略：
+    //  · 顶层整项（keepTop）「原地保留」——不快照、不删除、不被 zip 覆盖、不还原，被占用也不碰它；
+    //  · 嵌套保留项（其所在顶层目录会被整体清空）仍走「快照→清空→还原」兜底。
     let tmpDir: string | null = null
+    let keepTop = new Set<string>()
     if (fs.existsSync(target)) {
       const preserved = collectPreserved(target, normalizePatterns(rule.preserve))
-      if (preserved.length) {
+      keepTop = new Set(
+        preserved
+          .map(p => p.rel.replace(/\\/g, '/'))
+          .filter(r => !r.includes('/'))
+          .map(r => r.toLowerCase()),
+      )
+      const nested = preserved.filter(p => p.rel.replace(/\\/g, '/').includes('/'))
+      if (nested.length) {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jz-preserve-'))
-        for (const { abs, rel } of preserved) {
+        for (const { abs, rel } of nested) {
           const dst = path.join(tmpDir, rel)
           fs.mkdirSync(path.dirname(dst), { recursive: true })
           fs.cpSync(abs, dst, { recursive: true })
         }
       }
       if (doBackup) backupOnce(ctx, target)
-      // merge=不清空，直接叠加覆盖同名；replace=清空后解压
-      if ((rule.mode ?? 'replace') === 'replace') clearDirContents(target)
+      // merge=不清空，直接叠加覆盖同名；replace=清空后解压（顶层保留项跳过删除）
+      if ((rule.mode ?? 'replace') === 'replace') clearDirContents(target, keepTop)
     }
     fs.mkdirSync(target, { recursive: true })
 
@@ -184,6 +196,12 @@ export const importExecutor: RuleExecutor<ImportRule> = {
       total = entries.length
       let done = 0
       for (const entry of entries) {
+        // 顶层保留项：zip 不得覆盖其内容，整段跳过
+        const topSeg = entry.name.replace(/\\/g, '/').split('/')[0].toLowerCase()
+        if (keepTop.has(topSeg)) {
+          ctx.onProgress(++done, total, entry.name)
+          continue
+        }
         const dest = safeJoin(target, entry.name)
         if (entry.isDirectory) {
           fs.mkdirSync(dest, { recursive: true })
@@ -197,7 +215,7 @@ export const importExecutor: RuleExecutor<ImportRule> = {
       await zip.close()
     }
 
-    // 还原保留项(覆盖 zip 同名内容)
+    // 还原嵌套保留项(覆盖 zip 同名内容);顶层保留项已原地保留，无需还原
     if (tmpDir) {
       fs.cpSync(tmpDir, target, { recursive: true, force: true })
       fs.rmSync(tmpDir, { recursive: true, force: true })

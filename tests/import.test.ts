@@ -67,6 +67,33 @@ describe('importExecutor', () => {
     expect(fs.existsSync(path.join(tmp, 'target', 'gone.txt'))).toBe(false)
   })
 
+  it('顶层保留目录原地保留：zip 不覆盖其内容，非保留同级被清除', async () => {
+    write('zipsrc/keepdir/x.txt', 'FROM-ZIP')   // zip 里也含 keepdir/x.txt
+    write('zipsrc/fresh.txt', 'Z')
+    await makeZip()
+    write('target/keepdir/x.txt', 'ORIGINAL')
+    write('target/keepdir/only-original.txt', 'KEEP-ME')
+    write('target/stale.txt', 'STALE')
+    await importExecutor.execute(rule({ preserve: ['keepdir'] }), ctx())
+    // 保留目录内容原样，zip 未覆盖，独有文件仍在
+    expect(fs.readFileSync(path.join(tmp, 'target', 'keepdir', 'x.txt'), 'utf8')).toBe('ORIGINAL')
+    expect(fs.readFileSync(path.join(tmp, 'target', 'keepdir', 'only-original.txt'), 'utf8')).toBe('KEEP-ME')
+    // 非保留同级被清除，zip 新文件正常解压进来
+    expect(fs.existsSync(path.join(tmp, 'target', 'stale.txt'))).toBe(false)
+    expect(fs.readFileSync(path.join(tmp, 'target', 'fresh.txt'), 'utf8')).toBe('Z')
+  })
+
+  it('嵌套保留项：所在顶层目录清空后仍还原（优先于 zip）', async () => {
+    write('zipsrc/sub/keep.txt', 'FROM-ZIP')
+    await makeZip()
+    write('target/sub/keep.txt', 'ORIGINAL')
+    write('target/sub/stale.txt', 'STALE')
+    await importExecutor.execute(rule({ preserve: ['sub/keep.txt'] }), ctx())
+    expect(fs.readFileSync(path.join(tmp, 'target', 'sub', 'keep.txt'), 'utf8')).toBe('ORIGINAL')
+    // sub 目录被整体清空重建，非保留的 stale 消失
+    expect(fs.existsSync(path.join(tmp, 'target', 'sub', 'stale.txt'))).toBe(false)
+  })
+
   it('备份时旧目录复制到 exe/backups/ 保留（不再 rename）', async () => {
     write('zipsrc/a.txt')
     await makeZip()
