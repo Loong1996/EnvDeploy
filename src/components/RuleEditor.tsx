@@ -56,6 +56,9 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
   const [jsonText, setJsonText] = useState(() =>
     rule.type === 'json' ? JSON.stringify(rule.data, null, 2) : '',
   )
+  const [jsonSource, setJsonSource] = useState<'inline' | 'file'>(() =>
+    rule.type === 'json' && rule.dataFile?.trim() ? 'file' : 'inline',
+  )
   const [errors, setErrors] = useState<string[]>([])
   const [showVars, setShowVars] = useState(false)
 
@@ -83,14 +86,20 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
           final.keys = (final.keys ?? []).map(s => s.trim()).filter(Boolean)
           if (!final.keys.length) errs.push('请至少指定一个要删除的 key')
         } else {
-          try {
-            const d: unknown = JSON.parse(jsonText.trim() || '{}')
-            if (typeof d !== 'object' || d === null || Array.isArray(d)) errs.push('数据必须是 JSON 对象')
-            else final.data = d as Record<string, unknown>
-          } catch {
-            errs.push('JSON 数据格式错误')
-          }
           final.preserve = (final.preserve ?? []).map(s => s.trim()).filter(Boolean)
+          if (jsonSource === 'file') {
+            final.dataFile = (final.dataFile ?? '').trim()
+            if (!final.dataFile) errs.push('数据文件路径不能为空')
+          } else {
+            delete final.dataFile
+            try {
+              const d: unknown = JSON.parse(jsonText.trim() || '{}')
+              if (typeof d !== 'object' || d === null || Array.isArray(d)) errs.push('数据必须是 JSON 对象')
+              else final.data = d as Record<string, unknown>
+            } catch {
+              errs.push('JSON 数据格式错误')
+            }
+          }
         }
         break
       }
@@ -229,9 +238,21 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
                   <KeyPathList value={draft.preserve ?? []} onChange={v => patch({ preserve: v })} placeholder="a.b.c" />
                 </Field>
               )}
-              <Field label="数据（JSON 对象，嵌套对象逐层合并）">
-                <textarea rows={10} value={jsonText} spellCheck={false} onChange={e => setJsonText(e.target.value)} />
+              <Field label="数据来源">
+                <select value={jsonSource} onChange={e => setJsonSource(e.target.value as 'inline' | 'file')}>
+                  <option value="inline">直接填写 JSON</option>
+                  <option value="file">来自文件（相对路径从 packages/ 查找）</option>
+                </select>
               </Field>
+              {jsonSource === 'file' ? (
+                <Field label="数据文件（JSON，相对路径从 packages/ 查找，支持 ${VAR}）">
+                  <PathRow value={draft.dataFile ?? ''} onChange={v => patch({ dataFile: v })} pick="packageFile" placeholder="config.json" />
+                </Field>
+              ) : (
+                <Field label="数据（JSON 对象，嵌套对象逐层合并）">
+                  <textarea rows={10} value={jsonText} spellCheck={false} onChange={e => setJsonText(e.target.value)} />
+                </Field>
+              )}
             </>
           )}
         </>

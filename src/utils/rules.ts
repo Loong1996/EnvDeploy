@@ -37,7 +37,8 @@ export function ruleSummary(r: Rule): string {
     case 'json': {
       if (r.op === 'delete') return `${r.file} (删除 ${r.keys?.length ?? 0} 个 key)`
       const keep = r.preserve?.length ? ` · 保留 ${r.preserve.length} 项` : ''
-      return `${r.file} (${r.op})${keep}`
+      const src = r.dataFile?.trim() ? ` · 数据来自 ${r.dataFile}` : ''
+      return `${r.file} (${r.op})${keep}${src}`
     }
     case 'env': {
       const tag = r.scope === 'machine' ? '[机器]' : '[用户]'

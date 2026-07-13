@@ -39,6 +39,8 @@ export interface JsonRule extends RuleBase {
   file: string
   op: JsonOp
   data: Record<string, unknown>
+  /** 数据来源文件（JSON）；非空时数据取自该文件而非内联 data，相对路径从 packages/ 查找。对 append/modify/upsert/overwrite 生效 */
+  dataFile?: string
   /** 点路径列表；仅 overwrite/upsert 生效：这些 key 保持原文件的值 */
   preserve?: string[]
   /** 点路径列表；仅 delete 生效：从文件中删除这些 key */

@@ -3,9 +3,30 @@ import path from 'path'
 import type { JsonRule, PlanChange } from '@shared/types'
 import type { RuleExecutor } from '../executor'
 import { expandVars } from '../vars'
+import { resolvePackagePath } from '../paths'
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+
+/**
+ * 计算规则的有效数据：dataFile 非空时从该文件读取（相对路径从 packages/ 查找），
+ * 否则用内联 data。文件缺失 / 非法 JSON / 顶层非对象都抛出可读错误。
+ */
+function effectiveData(rule: JsonRule, baseDir: string): Record<string, unknown> {
+  if (rule.dataFile?.trim()) {
+    const src = resolvePackagePath(baseDir, expandVars(rule.dataFile))
+    if (!fs.existsSync(src) || !fs.statSync(src).isFile()) throw new Error(`数据文件不存在: ${src}`)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(fs.readFileSync(src, 'utf8'))
+    } catch {
+      throw new Error(`数据文件不是合法 JSON: ${src}`)
+    }
+    if (!isPlainObject(parsed)) throw new Error(`数据文件顶层不是对象: ${src}`)
+    return parsed
+  }
+  return rule.data
 }
 
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
@@ -100,15 +121,17 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
     if (!rule.file?.trim()) errs.push('文件路径不能为空')
     if (rule.op === 'delete') {
       if (!(rule.keys ?? []).some(k => k.trim())) errs.push('请至少指定一个要删除的 key')
+    } else if (rule.dataFile?.trim()) {
+      // 数据取自文件，存在性与格式在 plan/execute 时校验
     } else if (!isPlainObject(rule.data)) {
       errs.push('数据必须是 JSON 对象')
     }
     return errs
   },
 
-  async plan(rule) {
+  async plan(rule, ctx) {
     const filepath = path.normalize(expandVars(rule.file))
-    const data = rule.data
+    const data = rule.op === 'delete' ? {} : effectiveData(rule, ctx.baseDir)
     if (!isPlainObject(data)) return { noop: false, changes: [{ kind: 'modify', detail: '数据不是对象' }] }
     if (rule.op === 'overwrite') {
       const exists = fs.existsSync(filepath)
@@ -153,7 +176,7 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
 
   async execute(rule, ctx) {
     const filepath = path.normalize(expandVars(rule.file))
-    const data = rule.data
+    const data = rule.op === 'delete' ? {} : effectiveData(rule, ctx.baseDir)
     if (!isPlainObject(data)) throw new Error('数据必须是 JSON 对象')
     ctx.onProgress(0, 1, path.basename(filepath))
 

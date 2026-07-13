@@ -158,6 +158,79 @@ describe('jsonExecutor delete', () => {
   })
 })
 
+describe('jsonExecutor dataFile', () => {
+  // packages/ 相对路径：ctx.baseDir=tmp，故数据文件写到 tmp/packages 下
+  function writePackageData(name: string, obj: unknown): void {
+    const dir = path.join(tmp, 'packages')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, name), JSON.stringify(obj), 'utf8')
+  }
+
+  it('upsert 数据取自 packages 相对路径文件', async () => {
+    const p = writeJson({ a: { x: 1 }, keep: true })
+    writePackageData('src.json', { a: { y: 2 }, add: 1 })
+    await jsonExecutor.execute(rule({ op: 'upsert', dataFile: 'src.json', data: {} }), ctx())
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ a: { x: 1, y: 2 }, keep: true, add: 1 })
+  })
+
+  it('overwrite 数据取自文件（可创建新文件）', async () => {
+    const p = path.join(tmp, 'out.json')
+    writePackageData('full.json', { fresh: true, n: 3 })
+    await jsonExecutor.execute(rule({ file: p, op: 'overwrite', dataFile: 'full.json', data: {} }), ctx())
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ fresh: true, n: 3 })
+  })
+
+  it('dataFile 优先于内联 data', async () => {
+    const p = writeJson({ a: 1 })
+    writePackageData('src.json', { fromFile: true })
+    await jsonExecutor.execute(rule({ op: 'upsert', dataFile: 'src.json', data: { inline: true } }), ctx())
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ a: 1, fromFile: true })
+  })
+
+  it('数据文件不存在 → 报错', async () => {
+    writeJson({ a: 1 })
+    await expect(jsonExecutor.execute(rule({ op: 'upsert', dataFile: 'missing.json', data: {} }), ctx()))
+      .rejects.toThrow('数据文件不存在')
+  })
+
+  it('数据文件非法 JSON → 报错', async () => {
+    writeJson({ a: 1 })
+    const dir = path.join(tmp, 'packages')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'bad.json'), '{ not json', 'utf8')
+    await expect(jsonExecutor.execute(rule({ op: 'upsert', dataFile: 'bad.json', data: {} }), ctx()))
+      .rejects.toThrow('不是合法 JSON')
+  })
+
+  it('数据文件顶层非对象 → 报错', async () => {
+    writeJson({ a: 1 })
+    writePackageData('arr.json', [1, 2, 3])
+    await expect(jsonExecutor.execute(rule({ op: 'upsert', dataFile: 'arr.json', data: {} }), ctx()))
+      .rejects.toThrow('顶层不是对象')
+  })
+
+  it('绝对路径数据文件也支持', async () => {
+    const p = writeJson({ a: 1 })
+    const abs = path.join(tmp, 'abs-src.json')
+    fs.writeFileSync(abs, JSON.stringify({ b: 2 }), 'utf8')
+    await jsonExecutor.execute(rule({ op: 'upsert', dataFile: abs, data: {} }), ctx())
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ a: 1, b: 2 })
+  })
+
+  it('plan 汇报来自文件的 key 变更', async () => {
+    writeJson({ a: 1 })
+    writePackageData('src.json', { b: 2 })
+    const res = await jsonExecutor.plan(rule({ op: 'upsert', dataFile: 'src.json', data: {} }), ctx())
+    expect(res.noop).toBe(false)
+    expect(res.changes.some(c => c.detail === 'b')).toBe(true)
+  })
+
+  it('validate：dataFile 非空时不强制内联 data 为对象', () => {
+    expect(jsonExecutor.validate(rule({ op: 'upsert', dataFile: 'src.json', data: [] as unknown as Record<string, unknown> })))
+      .toEqual([])
+  })
+})
+
 describe('jsonExecutor preserve', () => {
   it('overwrite 保留原文件存在的路径（原值优先）', async () => {
     const p = writeJson({ token: 'SECRET', nested: { keep: 1, drop: 2 }, gone: true })
