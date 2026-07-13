@@ -12,7 +12,7 @@
 |----------|------|
 | 打包 | 目录 → zip（支持排除通配符）；单文件直拷 |
 | 导入 | zip → 目标目录（支持保留指定文件、单文件重命名）；可选「导入前备份」：把原目标复制到 exe 目录 `backups/`（每次带时间戳、不覆盖旧备份），每条规则可单独开关 |
-| JSON | 对 JSON 文件 append / modify / upsert / overwrite（嵌套深度合并，写前自动 .bak） |
+| JSON | 对 JSON 文件 append / modify / upsert / overwrite / delete（嵌套深度合并、按点路径删 key，写前自动 .bak） |
 | 环境变量 | set / append_path（追加或前置，自动去重）/ remove（填「值」= 只移除列表中该项；留空 = 删除整个变量，PATH 等重要系统变量受保护、禁止整体删除）；用户级（HKCU，免管理员）或机器级（HKLM，需管理员）；写入后非阻塞广播即时生效 |
 | 运行脚本 | 多行 PowerShell / CMD 脚本，可指定工作目录，可选以管理员身份运行（非管理员时弹 UAC） |
 | 下载文件 | 从 http/https 地址下载到指定路径，带进度，可选择已存在时是否覆盖 |

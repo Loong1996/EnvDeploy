@@ -29,6 +29,22 @@ export function getByPath(obj: Record<string, unknown>, path: string): unknown {
   return cur
 }
 
+/** 删除点路径末端 key；路径不存在 / 中途非对象 / 危险 key / 空段 → 不删，返回 false */
+export function deleteByPath(obj: Record<string, unknown>, path: string): boolean {
+  const segs = splitPath(path)
+  if (!segs || segs.some(s => DANGEROUS_KEYS.has(s))) return false
+  let cur: unknown = obj
+  for (let i = 0; i < segs.length - 1; i++) {
+    if (!isPlainObject(cur)) return false
+    cur = cur[segs[i]]
+  }
+  if (!isPlainObject(cur)) return false
+  const last = segs[segs.length - 1]
+  if (!(last in cur)) return false
+  delete cur[last]
+  return true
+}
+
 /** 写点路径值；逐层建对象；命中危险 key / 空段则整条跳过 */
 export function setByPath(obj: Record<string, unknown>, path: string, value: unknown): void {
   const segs = splitPath(path)
@@ -82,7 +98,11 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
   validate(rule) {
     const errs: string[] = []
     if (!rule.file?.trim()) errs.push('文件路径不能为空')
-    if (!isPlainObject(rule.data)) errs.push('数据必须是 JSON 对象')
+    if (rule.op === 'delete') {
+      if (!(rule.keys ?? []).some(k => k.trim())) errs.push('请至少指定一个要删除的 key')
+    } else if (!isPlainObject(rule.data)) {
+      errs.push('数据必须是 JSON 对象')
+    }
     return errs
   },
 
@@ -105,6 +125,12 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
     if (!fs.existsSync(filepath)) throw new Error(`文件不存在: ${filepath}`)
     const existing: unknown = JSON.parse(fs.readFileSync(filepath, 'utf8'))
     if (!isPlainObject(existing)) throw new Error(`JSON 文件顶层不是对象: ${filepath}`)
+    if (rule.op === 'delete') {
+      const probe = structuredClone(existing)
+      const hit = (rule.keys ?? []).filter(k => deleteByPath(probe, k))
+      if (!hit.length) return { noop: true, changes: [{ kind: 'noop', detail: '目标 key 均不存在，无变化' }] }
+      return { noop: false, changes: hit.map(k => ({ kind: 'delete', detail: k })) }
+    }
     if (rule.op === 'append') {
       const conflicts = Object.keys(data).filter(k => k in existing)
       if (conflicts.length) throw new Error(`以下 key 已存在，无法追加: ${conflicts.join(', ')}`)
@@ -166,6 +192,11 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
       merged = deepMerge(existing, data)
       applyPreserve(merged, existing, rule.preserve)
       msg = `已合并 ${Object.keys(data).length} 个 key 到 ${filepath}`
+    } else if (rule.op === 'delete') {
+      const out = structuredClone(existing)
+      const removed = (rule.keys ?? []).filter(k => deleteByPath(out, k))
+      merged = out
+      msg = `已删除 ${removed.length} 个 key 从 ${filepath}`
     } else {
       throw new Error(`未知操作: ${String(rule.op)}`)
     }

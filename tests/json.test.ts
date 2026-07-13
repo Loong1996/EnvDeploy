@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { deepMerge, getByPath, jsonExecutor, setByPath } from '../electron/core/executors/json'
+import { deepMerge, deleteByPath, getByPath, jsonExecutor, setByPath } from '../electron/core/executors/json'
 import type { ExecContext } from '../electron/core/executor'
 import type { JsonRule } from '../shared/types'
 
@@ -86,6 +86,75 @@ describe('setByPath', () => {
     const o: Record<string, unknown> = {}
     setByPath(o, 'a..b', 1)
     expect(o).toEqual({})
+  })
+})
+
+describe('deleteByPath', () => {
+  it('删除顶层 key', () => {
+    const o: Record<string, unknown> = { a: 1, b: 2 }
+    expect(deleteByPath(o, 'a')).toBe(true)
+    expect(o).toEqual({ b: 2 })
+  })
+  it('删除嵌套 key，保留同级其它', () => {
+    const o: Record<string, unknown> = { a: { x: 1, y: 2 } }
+    expect(deleteByPath(o, 'a.x')).toBe(true)
+    expect(o).toEqual({ a: { y: 2 } })
+  })
+  it('路径不存在 → false 且不改动', () => {
+    const o: Record<string, unknown> = { a: { y: 2 } }
+    expect(deleteByPath(o, 'a.x')).toBe(false)
+    expect(o).toEqual({ a: { y: 2 } })
+  })
+  it('中途非对象 → false', () => {
+    const o: Record<string, unknown> = { a: 5 }
+    expect(deleteByPath(o, 'a.b')).toBe(false)
+    expect(o).toEqual({ a: 5 })
+  })
+  it('危险 key → false 且不改动', () => {
+    const o: Record<string, unknown> = { a: 1 }
+    expect(deleteByPath(o, '__proto__.x')).toBe(false)
+    expect(o).toEqual({ a: 1 })
+  })
+  it('空段非法 → false', () => {
+    const o: Record<string, unknown> = { a: { b: 1 } }
+    expect(deleteByPath(o, 'a..b')).toBe(false)
+    expect(o).toEqual({ a: { b: 1 } })
+  })
+})
+
+describe('jsonExecutor delete', () => {
+  it('删除指定 key 并生成 .bak', async () => {
+    const p = writeJson({ a: 1, b: 2, nested: { keep: 1, drop: 2 } })
+    const msg = await jsonExecutor.execute(rule({ op: 'delete', keys: ['b', 'nested.drop'] }), ctx())
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ a: 1, nested: { keep: 1 } })
+    expect(fs.existsSync(p + '.bak')).toBe(true)
+    expect(msg).toContain('已删除 2 个 key')
+  })
+  it('不存在的 key 自动跳过，只计已删数量', async () => {
+    const p = writeJson({ a: 1 })
+    const msg = await jsonExecutor.execute(rule({ op: 'delete', keys: ['a', 'missing', 'x.y'] }), ctx())
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({})
+    expect(msg).toContain('已删除 1 个 key')
+  })
+  it('文件不存在报错', async () => {
+    await expect(jsonExecutor.execute(rule({ file: path.join(tmp, 'nope.json'), op: 'delete', keys: ['a'] }), ctx()))
+      .rejects.toThrow('文件不存在')
+  })
+  it('plan 只汇报实际存在的 key', async () => {
+    writeJson({ a: 1, nested: { drop: 2 } })
+    const res = await jsonExecutor.plan(rule({ op: 'delete', keys: ['a', 'nested.drop', 'missing'] }), ctx())
+    expect(res.noop).toBe(false)
+    expect(res.changes.map(c => c.detail)).toEqual(['a', 'nested.drop'])
+    expect(res.changes.every(c => c.kind === 'delete')).toBe(true)
+  })
+  it('plan 目标 key 均不存在 → noop', async () => {
+    writeJson({ a: 1 })
+    const res = await jsonExecutor.plan(rule({ op: 'delete', keys: ['missing'] }), ctx())
+    expect(res.noop).toBe(true)
+  })
+  it('validate 要求至少一个 key', () => {
+    expect(jsonExecutor.validate(rule({ op: 'delete', keys: [] }))).toContain('请至少指定一个要删除的 key')
+    expect(jsonExecutor.validate(rule({ op: 'delete', keys: ['a'] }))).toEqual([])
   })
 })
 

@@ -79,14 +79,19 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
         break
       case 'json': {
         if (!final.file.trim()) errs.push('文件路径不能为空')
-        try {
-          const d: unknown = JSON.parse(jsonText.trim() || '{}')
-          if (typeof d !== 'object' || d === null || Array.isArray(d)) errs.push('数据必须是 JSON 对象')
-          else final.data = d as Record<string, unknown>
-        } catch {
-          errs.push('JSON 数据格式错误')
+        if (final.op === 'delete') {
+          final.keys = (final.keys ?? []).map(s => s.trim()).filter(Boolean)
+          if (!final.keys.length) errs.push('请至少指定一个要删除的 key')
+        } else {
+          try {
+            const d: unknown = JSON.parse(jsonText.trim() || '{}')
+            if (typeof d !== 'object' || d === null || Array.isArray(d)) errs.push('数据必须是 JSON 对象')
+            else final.data = d as Record<string, unknown>
+          } catch {
+            errs.push('JSON 数据格式错误')
+          }
+          final.preserve = (final.preserve ?? []).map(s => s.trim()).filter(Boolean)
         }
-        final.preserve = (final.preserve ?? []).map(s => s.trim()).filter(Boolean)
         break
       }
       case 'env':
@@ -210,16 +215,25 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
               <option value="append">append — 仅新增，key 已存在则报错</option>
               <option value="modify">modify — 仅修改，key 不存在则报错</option>
               <option value="overwrite">overwrite — 全量覆盖整个文件</option>
+              <option value="delete">delete — 删除指定 key（点路径）</option>
             </select>
           </Field>
-          {(draft.op === 'overwrite' || draft.op === 'upsert') && (
-            <Field label="保留（覆盖/合并时保持原文件的这些 key，点路径如 a.b.c）">
-              <KeyPathList value={draft.preserve ?? []} onChange={v => patch({ preserve: v })} placeholder="a.b.c" />
+          {draft.op === 'delete' ? (
+            <Field label="要删除的 key（点路径如 a.b.c，逐条回车添加；不存在的会自动跳过）">
+              <KeyPathList value={draft.keys ?? []} onChange={v => patch({ keys: v })} placeholder="a.b.c" />
             </Field>
+          ) : (
+            <>
+              {(draft.op === 'overwrite' || draft.op === 'upsert') && (
+                <Field label="保留（覆盖/合并时保持原文件的这些 key，点路径如 a.b.c）">
+                  <KeyPathList value={draft.preserve ?? []} onChange={v => patch({ preserve: v })} placeholder="a.b.c" />
+                </Field>
+              )}
+              <Field label="数据（JSON 对象，嵌套对象逐层合并）">
+                <textarea rows={10} value={jsonText} spellCheck={false} onChange={e => setJsonText(e.target.value)} />
+              </Field>
+            </>
           )}
-          <Field label="数据（JSON 对象，嵌套对象逐层合并）">
-            <textarea rows={10} value={jsonText} spellCheck={false} onChange={e => setJsonText(e.target.value)} />
-          </Field>
         </>
       )}
 

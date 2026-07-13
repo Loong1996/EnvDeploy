@@ -32,7 +32,7 @@ export interface ImportRule extends RuleBase {
   mode?: ImportMode
 }
 
-export type JsonOp = 'append' | 'modify' | 'upsert' | 'overwrite'
+export type JsonOp = 'append' | 'modify' | 'upsert' | 'overwrite' | 'delete'
 
 export interface JsonRule extends RuleBase {
   type: 'json'
@@ -41,6 +41,8 @@ export interface JsonRule extends RuleBase {
   data: Record<string, unknown>
   /** 点路径列表；仅 overwrite/upsert 生效：这些 key 保持原文件的值 */
   preserve?: string[]
+  /** 点路径列表；仅 delete 生效：从文件中删除这些 key */
+  keys?: string[]
 }
 
 export type EnvOp = 'set' | 'append_path' | 'remove'
