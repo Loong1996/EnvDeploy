@@ -1,12 +1,14 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import path from 'path'
 import fs from 'fs'
+import { randomUUID } from 'crypto'
 import type { AppConfig } from '@shared/types'
 import {
   backupConfig, listBackups, loadConfig, restoreConfig, saveConfig,
 } from './core/config'
 import { listRuleTypes, planRules, registerBuiltins, runRules } from './core/engine'
 import { parseRuleset, serializeRuleset } from './core/ruleset'
+import { reconcileImportedPeople } from '@shared/people'
 import { isAdmin } from './core/executors/env'
 
 registerBuiltins()
@@ -105,7 +107,7 @@ app.whenReady().then(() => {
       filters: [{ name: '规则集', extensions: ['json'] }],
     })
     if (r.canceled || !r.filePath) return { ok: false, canceled: true }
-    fs.writeFileSync(r.filePath, serializeRuleset(rules), 'utf8')
+    fs.writeFileSync(r.filePath, serializeRuleset(rules, cfg.people), 'utf8')
     return { ok: true, path: r.filePath }
   })
 
@@ -113,9 +115,11 @@ app.whenReady().then(() => {
     try {
       const imported = parseRuleset(fs.readFileSync(file, 'utf8'))
       const cfg = loadConfig(appDir())
-      cfg.rules = [...cfg.rules, ...imported]
+      const { people, rules } = reconcileImportedPeople(cfg.people, imported, () => randomUUID())
+      cfg.people = people
+      cfg.rules = [...cfg.rules, ...rules]
       saveConfig(appDir(), cfg)
-      return { ok: true, config: cfg, added: imported.length }
+      return { ok: true, config: cfg, added: rules.length }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
