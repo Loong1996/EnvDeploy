@@ -30,7 +30,9 @@ function isZipFile(file: string): boolean {
   } finally {
     fs.closeSync(fd)
   }
-  return buf.equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+  // PK\x03\x04 普通条目、PK\x05\x06 空 zip（EOCD 打头）、PK\x07\x08 分卷——都按 zip 走解压而非单文件复制
+  if (buf[0] !== 0x50 || buf[1] !== 0x4b) return false
+  return (buf[2] === 0x03 && buf[3] === 0x04) || (buf[2] === 0x05 && buf[3] === 0x06) || (buf[2] === 0x07 && buf[3] === 0x08)
 }
 
 function timestamp(): string {

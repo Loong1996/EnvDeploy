@@ -7,14 +7,34 @@ export function ruleMatchesPerson(rule: Rule, personId: string | null): boolean 
   return (rule.people ?? []).includes(personId)
 }
 
+/** 各类型易缺字段的默认值:手写/旧版规则集 JSON 可能缺这些字段,缺省补齐,避免执行时对 undefined 调字符串方法 */
+function typeDefaults(type: Rule['type']): Record<string, unknown> {
+  switch (type) {
+    case 'pack': return { excludes: [] }
+    case 'import': return { rename: '', preserve: [] }
+    case 'json': return { data: {} }
+    case 'env': return { value: '' }
+    case 'run': return { cwd: '', shell: 'powershell', elevated: false }
+    case 'download': return { overwrite: false }
+    default: return {}
+  }
+}
+
 /**
- * 规范化:common 保证为 boolean(未显式给定时按「无 people 即通用」推断),people 保证为数组。
+ * 规范化:common 保证为 boolean(未显式给定时按「无 people 即通用」推断),people 保证为数组,
+ * enabled 缺省为 true,类型专属可选字段补默认值。
  * 通用规则不保留人员标签(people 置空),避免「通用 + 具名」共存导致导出冗余、卡片歧义。
  */
 export function normalizeRule<T extends Rule>(rule: T): T {
   const raw = Array.isArray(rule.people) ? rule.people : []
   const common = typeof rule.common === 'boolean' ? rule.common : raw.length === 0
-  return { ...rule, common, people: common ? [] : raw }
+  return {
+    ...typeDefaults(rule.type),
+    ...rule,
+    enabled: rule.enabled ?? true,
+    common,
+    people: common ? [] : raw,
+  }
 }
 
 /** 追加一个人员(去空白;名称为空或与现有人员同名则原样返回,不改原数组) */
@@ -24,10 +44,10 @@ export function addPerson(people: Person[], id: string, name: string): Person[] 
   return [...people, { id, name: n }]
 }
 
-/** 改名(去空白;名称为空则原样返回) */
+/** 改名(去空白;名称为空或与其他人员重名则原样返回——导出/导入按名字回填 id,重名会归错人) */
 export function renamePerson(people: Person[], id: string, name: string): Person[] {
   const n = name.trim()
-  if (!n) return people
+  if (!n || people.some(p => p.id !== id && p.name === n)) return people
   return people.map(p => (p.id === id ? { ...p, name: n } : p))
 }
 

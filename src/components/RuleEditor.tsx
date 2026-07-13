@@ -10,6 +10,8 @@ interface Props {
   isNew: boolean
   typeLabel: string
   people: Person[]
+  /** 规则未显式设置 backup 时的运行时回退值（全局设置 backupBeforeImport），保证勾选态与实际行为一致 */
+  backupDefault: boolean
   onSave(r: Rule): void
   onClose(): void
 }
@@ -62,7 +64,7 @@ function MatchHint({ root }: { root: string }) {
   )
 }
 
-export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onClose }: Props) {
+export default function RuleEditor({ rule, isNew, typeLabel, people, backupDefault, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<Rule>(() => structuredClone(rule))
   const [jsonText, setJsonText] = useState(() =>
     rule.type === 'json' ? JSON.stringify(rule.data, null, 2) : '',
@@ -220,7 +222,7 @@ export default function RuleEditor({ rule, isNew, typeLabel, people, onSave, onC
             <MatchHint root="目标目录" />
           </Field>
           <label className="check-item">
-            <input type="checkbox" checked={draft.backup ?? true} onChange={e => patch({ backup: e.target.checked })} />
+            <input type="checkbox" checked={draft.backup ?? backupDefault} onChange={e => patch({ backup: e.target.checked })} />
             <span>导入前备份到 exe 目录 backups/（多次备份自动加时间戳，不勾则直接覆盖）</span>
           </label>
         </>

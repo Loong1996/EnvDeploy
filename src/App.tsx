@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AppConfig, Person, ProgressEvent, Rule, RulePlan, RuleResult, RuleTypeInfo } from '@shared/types'
 import { ruleMatchesPerson } from '@shared/people'
 import LogsPage from './pages/LogsPage'
@@ -48,14 +48,17 @@ export default function App() {
     void window.api.isAdmin().then(setAdmin)
   }, [])
 
-  /** 变更配置并立即持久化 */
+  // 持久化放在 effect 里而非 setState updater 内:updater 需保持纯函数(StrictMode 会双调用,副作用会执行两次)
+  const loadedRef = useRef(false)
+  useEffect(() => {
+    if (!config) return
+    if (!loadedRef.current) { loadedRef.current = true; return } // 首次是刚从磁盘加载的,无需回写
+    void window.api.saveConfig(config)
+  }, [config])
+
+  /** 变更配置(随 config 变化由上方 effect 持久化) */
   const update = useCallback((mut: (c: AppConfig) => AppConfig) => {
-    setConfig(c => {
-      if (!c) return c
-      const next = mut(c)
-      void window.api.saveConfig(next)
-      return next
-    })
+    setConfig(c => (c ? mut(c) : c))
   }, [])
 
   const selectPage = (p: Page): void => {
@@ -95,6 +98,14 @@ export default function App() {
         },
         ...l,
       ])
+    } catch (e) {
+      // 规则内部错误已由主进程逐条捕获；这里兜底 IPC 层异常（如配置读取失败），避免静默无提示
+      setLogs(l => [{
+        time: new Date().toLocaleString(),
+        ok: false,
+        summary: `执行失败: ${e instanceof Error ? e.message : String(e)}`,
+        details: [],
+      }, ...l])
     } finally {
       off()
       setRunning(false)
@@ -105,7 +116,12 @@ export default function App() {
     onAdd: (type: import('@shared/types').RuleType) => setEditing({ rule: newRule(type), isNew: true }),
     onEdit: (rule: Rule) => setEditing({ rule, isNew: false }),
     onDelete: (id: string) => {
-      if (confirm('确定删除该规则？')) update(c => ({ ...c, rules: c.rules.filter(r => r.id !== id) }))
+      if (confirm('确定删除该规则？')) update(c => {
+        // 同步清掉勾选记忆，避免已删规则的 id 永久残留在配置里
+        const { [id]: _p, ...pack } = c.selectionMemory.pack
+        const { [id]: _d, ...deploy } = c.selectionMemory.deploy
+        return { ...c, rules: c.rules.filter(r => r.id !== id), selectionMemory: { pack, deploy } }
+      })
     },
     onRun: (id: string) => void runIds([id]),
     onToggle: (id: string, enabled: boolean) =>
@@ -132,8 +148,17 @@ export default function App() {
     setSelecting(null)
     update(c => ({ ...c, selectionMemory: { ...c.selectionMemory, deploy: memory } }))
     if (!ids.length) return
-    const plans = await window.api.planRules(ids)
-    setPreview({ ids, plans })
+    try {
+      const plans = await window.api.planRules(ids)
+      setPreview({ ids, plans })
+    } catch (e) {
+      setLogs(l => [{
+        time: new Date().toLocaleString(),
+        ok: false,
+        summary: `预览失败: ${e instanceof Error ? e.message : String(e)}`,
+        details: [],
+      }, ...l])
+    }
   }
 
   const applyImportResult = (r: { ok: boolean; config?: AppConfig; added?: number; canceled?: boolean; error?: string }): void => {
@@ -244,6 +269,7 @@ export default function App() {
           isNew={editing.isNew}
           typeLabel={types.find(t => t.type === editing.rule.type)?.label ?? editing.rule.type}
           people={people}
+          backupDefault={config.settings.backupBeforeImport}
           onSave={saveRule}
           onClose={() => setEditing(null)}
         />
@@ -295,6 +321,7 @@ export default function App() {
       {askPerson && (
         <PersonPrompt
           people={config.people}
+          initial={person}
           onConfirm={id => { selectPerson(id); setAskPerson(false) }}
         />
       )}

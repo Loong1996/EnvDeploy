@@ -37,4 +37,9 @@ describe('download.plan', () => {
     expect(r.noop).toBe(false)
     expect(r.changes[0].kind).toBe('download')
   })
+  it('目标是已存在目录 → plan/execute 都明确报错', async () => {
+    const d = { id: '1', type: 'download' as const, name: 'd', enabled: true, url: 'https://x/a', target: dir, overwrite: true }
+    await expect(downloadExecutor.plan(d, ctx)).rejects.toThrow('已存在的目录')
+    await expect(downloadExecutor.execute(d, ctx)).rejects.toThrow('已存在的目录')
+  })
 })

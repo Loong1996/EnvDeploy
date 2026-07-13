@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runExecutor, shellInvocation, scriptExt, scriptBody } from '../electron/core/executors/run'
+import { decodeOutFile, runExecutor, shellInvocation, scriptExt, scriptBody } from '../electron/core/executors/run'
 import type { ExecContext } from '../electron/core/executor'
 
 const ctx: ExecContext = { baseDir: process.cwd(), settings: { backupBeforeImport: true }, onProgress: () => {} }
@@ -36,6 +36,29 @@ describe('scriptBody', () => {
     const b = scriptBody('echo 你好', 'cmd')
     expect(b.startsWith('@chcp 65001')).toBe(true)
     expect(b.startsWith('﻿')).toBe(false)
+  })
+  it('cmd 行尾归一为 CRLF（批处理解析器对 LF-only 有边缘问题）', () => {
+    const b = scriptBody('echo a\necho b\r\necho c', 'cmd')
+    expect(b).toContain('echo a\r\necho b\r\necho c')
+    expect(/[^\r]\n/.test(b)).toBe(false) // 不存在孤立 LF
+  })
+  it('powershell 不改动行尾', () => {
+    expect(scriptBody('echo a\necho b', 'powershell')).toBe('﻿echo a\necho b')
+  })
+})
+
+describe('decodeOutFile', () => {
+  it('UTF-16LE BOM（PowerShell 5.1 *> 重定向的默认编码）', () => {
+    expect(decodeOutFile(Buffer.from('﻿hello 你好', 'utf16le'))).toBe('hello 你好')
+  })
+  it('UTF-8 BOM', () => {
+    expect(decodeOutFile(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('hi 你好', 'utf8')]))).toBe('hi 你好')
+  })
+  it('无 BOM 按 UTF-8', () => {
+    expect(decodeOutFile(Buffer.from('plain', 'utf8'))).toBe('plain')
+  })
+  it('空文件', () => {
+    expect(decodeOutFile(Buffer.alloc(0))).toBe('')
   })
 })
 

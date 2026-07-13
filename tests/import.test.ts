@@ -211,6 +211,18 @@ describe('importExecutor', () => {
       .rejects.toThrow('源压缩包位于目标目录内')
   })
 
+  it('空 zip(仅 EOCD 记录)按 zip 解压 0 条目,而非当作普通文件复制进目标', async () => {
+    // 空 zip = 22 字节 EOCD:PK\x05\x06 + 18 个零字节
+    const eocd = Buffer.concat([Buffer.from([0x50, 0x4b, 0x05, 0x06]), Buffer.alloc(18)])
+    fs.mkdirSync(path.join(tmp, 'packages'), { recursive: true })
+    fs.writeFileSync(path.join(tmp, 'packages', 'empty.zip'), eocd)
+    write('target/old.txt', 'OLD')
+    const msg = await importExecutor.execute(rule({ zip: 'empty.zip' }), ctx())
+    expect(msg).toContain('已解压 0 个文件')
+    expect(fs.existsSync(path.join(tmp, 'target', 'old.txt'))).toBe(false) // replace 语义:目标被清空
+    expect(fs.existsSync(path.join(tmp, 'target', 'empty.zip'))).toBe(false) // 不是复制 zip 本体
+  })
+
   it('远程 URL 源报暂不支持(扩展预留)', async () => {
     await expect(importExecutor.execute(rule({ zip: 'https://x.com/a.zip' }), ctx()))
       .rejects.toThrow('暂不支持远程 zip 源')

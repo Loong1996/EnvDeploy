@@ -45,6 +45,22 @@ describe('normalizeRule', () => {
     expect(r.common).toBe(true)
     expect(r.people).toEqual([])
   })
+  it('补齐类型专属缺失字段(导入的规则集可能缺)', () => {
+    const imp = normalizeRule({ id: 'i1', type: 'import', name: 'i', enabled: true, zip: 'z', target: 't' } as Rule)
+    expect(imp).toMatchObject({ rename: '', preserve: [] })
+    const env = normalizeRule({ id: 'e1', type: 'env', name: 'e', enabled: true, key: 'K', op: 'set' } as Rule)
+    expect(env).toMatchObject({ value: '' })
+    const run = normalizeRule({ id: 'x1', type: 'run', name: 'x', enabled: true, command: 'echo' } as Rule)
+    expect(run).toMatchObject({ cwd: '', shell: 'powershell', elevated: false })
+  })
+  it('缺失字段不覆盖已有值,enabled 缺省 true、显式 false 保留', () => {
+    const r = normalizeRule(envRule({ value: 'KEEP' }))
+    expect(r).toMatchObject({ value: 'KEEP', enabled: true })
+    const off = normalizeRule(envRule({ enabled: false }))
+    expect(off.enabled).toBe(false)
+    const noEnabled = normalizeRule({ id: 'n1', type: 'env', name: 'n', key: 'K', value: '', op: 'set' } as Rule)
+    expect(noEnabled.enabled).toBe(true)
+  })
 })
 
 describe('roster 增删改', () => {
@@ -57,6 +73,11 @@ describe('roster 增删改', () => {
   it('renamePerson 改中目标,空白名原样返回', () => {
     expect(renamePerson(base, 'a', '张三丰')).toEqual([{ id: 'a', name: '张三丰' }])
     expect(renamePerson(base, 'a', '  ')).toEqual(base)
+  })
+  it('renamePerson 与其他人员重名原样返回,重名自身允许', () => {
+    const two: Person[] = [{ id: 'a', name: '张三' }, { id: 'b', name: '李四' }]
+    expect(renamePerson(two, 'b', '张三')).toBe(two) // 撞他人名 → 拒绝
+    expect(renamePerson(two, 'a', '张三')).toEqual(two) // 改回自己原名 → 允许(无变化)
   })
   it('removePerson 删名单并从规则级联剔除该 id', () => {
     const rules = [

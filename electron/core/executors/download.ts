@@ -12,6 +12,18 @@ function fetchTo(url: string, dest: string, ctx: ExecContext, redirects = 0): Pr
   return new Promise<void>((resolve, reject) => {
     if (redirects > MAX_REDIRECT) return reject(new Error('重定向次数过多'))
     const mod = url.startsWith('https:') ? https : http
+    const tmp = `${dest}.download`
+    // 写流提升到请求作用域：请求层错误（含超时 destroy）也要关流、删临时文件
+    let out: fs.WriteStream | null = null
+    const fail = (err: Error): void => {
+      if (out) {
+        out.destroy()
+        out = null
+        fs.unlink(tmp, () => reject(err))
+      } else {
+        reject(err)
+      }
+    }
     const req = mod.get(url, res => {
       const status = res.statusCode ?? 0
       if (status >= 300 && status < 400 && res.headers.location) {
@@ -27,21 +39,16 @@ function fetchTo(url: string, dest: string, ctx: ExecContext, redirects = 0): Pr
       }
       const total = Number(res.headers['content-length'] ?? 0)
       let received = 0
-      const tmp = `${dest}.download`
-      const out = fs.createWriteStream(tmp)
-      const fail = (err: Error): void => {
-        res.destroy()
-        out.destroy()
-        fs.unlink(tmp, () => reject(err))
-      }
+      out = fs.createWriteStream(tmp)
       res.on('data', chunk => {
         received += chunk.length
         ctx.onProgress(received, total || received, `${(received / 1048576).toFixed(1)} MiB`)
       })
       res.pipe(out)
-      res.on('error', fail)
+      res.on('error', err => { res.destroy(); fail(err) })
       out.on('error', fail)
-      out.on('finish', () => out.close(() => {
+      out.on('finish', () => out?.close(() => {
+        out = null
         try {
           fs.renameSync(tmp, dest)
           resolve()
@@ -50,7 +57,7 @@ function fetchTo(url: string, dest: string, ctx: ExecContext, redirects = 0): Pr
         }
       }))
     })
-    req.on('error', reject)
+    req.on('error', fail)
     req.setTimeout(30000, () => req.destroy(new Error('下载超时')))
   })
 }
@@ -69,6 +76,9 @@ export const downloadExecutor: RuleExecutor<DownloadRule> = {
 
   async plan(rule) {
     const target = path.normalize(expandVars(rule.target))
+    if (fs.existsSync(target) && fs.statSync(target).isDirectory()) {
+      throw new Error(`保存路径是已存在的目录，请填写文件路径: ${target}`)
+    }
     if (fs.existsSync(target) && !rule.overwrite) {
       return { noop: true, changes: [{ kind: 'noop', detail: `已存在，跳过: ${target}` }] }
     }
@@ -79,6 +89,9 @@ export const downloadExecutor: RuleExecutor<DownloadRule> = {
     const url = expandVars(rule.url).trim()
     if (!/^https?:\/\//i.test(url)) throw new Error('仅支持 http/https 地址')
     const target = path.normalize(expandVars(rule.target))
+    if (fs.existsSync(target) && fs.statSync(target).isDirectory()) {
+      throw new Error(`保存路径是已存在的目录，请填写文件路径: ${target}`)
+    }
     if (fs.existsSync(target) && !rule.overwrite) {
       ctx.onProgress(1, 1, path.basename(target))
       return `目标已存在，跳过下载: ${target}`

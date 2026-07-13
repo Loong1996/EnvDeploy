@@ -18,10 +18,18 @@ describe('newRule', () => {
 })
 
 describe('moveRule', () => {
-  it('把拖拽项移到目标项之前', () => {
+  it('向上拖落在目标之前', () => {
     const all = [r('a'), r('b'), r('c'), r('d')]
     expect(moveRule(all, 'd', 'b').map(x => x.id)).toEqual(['a', 'd', 'b', 'c'])
-    expect(moveRule(all, 'a', 'c').map(x => x.id)).toEqual(['b', 'a', 'c', 'd'])
+  })
+  it('向下拖落在目标之后', () => {
+    const all = [r('a'), r('b'), r('c'), r('d')]
+    expect(moveRule(all, 'a', 'c').map(x => x.id)).toEqual(['b', 'c', 'a', 'd'])
+    expect(moveRule(all, 'a', 'b').map(x => x.id)).toEqual(['b', 'a', 'c', 'd'])
+  })
+  it('可以拖到列表末尾', () => {
+    const all = [r('a'), r('b'), r('c')]
+    expect(moveRule(all, 'a', 'c').map(x => x.id)).toEqual(['b', 'c', 'a'])
   })
   it('拖到自身或未知 id 时原样返回', () => {
     const all = [r('a'), r('b')]

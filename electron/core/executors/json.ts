@@ -29,6 +29,15 @@ function effectiveData(rule: JsonRule, baseDir: string): Record<string, unknown>
   return rule.data
 }
 
+/** 读取已存在文件的 JSON；损坏/不可解析返回 undefined（overwrite 语义下应照常覆盖而非失败） */
+function tryReadJson(filepath: string): unknown {
+  try {
+    return JSON.parse(fs.readFileSync(filepath, 'utf8'))
+  } catch {
+    return undefined
+  }
+}
+
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 /** 拆分点路径；含空段（a..b、首尾 .）视为非法 → null */
@@ -137,7 +146,7 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
       const exists = fs.existsSync(filepath)
       const changes: PlanChange[] = [{ kind: exists ? 'modify' : 'create', detail: `全量写入 ${filepath}` }]
       if (exists && rule.preserve?.length) {
-        const prev: unknown = JSON.parse(fs.readFileSync(filepath, 'utf8'))
+        const prev = tryReadJson(filepath)
         if (isPlainObject(prev)) {
           const kept = rule.preserve.filter(p => getByPath(prev, p) !== undefined)
           if (kept.length) changes.push({ kind: 'noop', detail: `保留 ${kept.length} 项：${kept.join(', ')}` })
@@ -184,7 +193,7 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
       fs.mkdirSync(path.dirname(filepath), { recursive: true })
       const out = structuredClone(data)
       if (fs.existsSync(filepath)) {
-        const prev: unknown = JSON.parse(fs.readFileSync(filepath, 'utf8'))
+        const prev = tryReadJson(filepath)
         if (isPlainObject(prev)) applyPreserve(out, prev, rule.preserve)
         fs.copyFileSync(filepath, filepath + '.bak')
       }
@@ -196,8 +205,6 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
     if (!fs.existsSync(filepath)) throw new Error(`文件不存在: ${filepath}`)
     const existing: unknown = JSON.parse(fs.readFileSync(filepath, 'utf8'))
     if (!isPlainObject(existing)) throw new Error(`JSON 文件顶层不是对象: ${filepath}`)
-
-    fs.copyFileSync(filepath, filepath + '.bak')
 
     let merged: Record<string, unknown>
     let msg: string
@@ -218,12 +225,18 @@ export const jsonExecutor: RuleExecutor<JsonRule> = {
     } else if (rule.op === 'delete') {
       const out = structuredClone(existing)
       const removed = (rule.keys ?? []).filter(k => deleteByPath(out, k))
+      if (!removed.length) {
+        ctx.onProgress(1, 1, path.basename(filepath))
+        return `目标 key 均不存在，未改动 ${filepath}`
+      }
       merged = out
       msg = `已删除 ${removed.length} 个 key 从 ${filepath}`
     } else {
       throw new Error(`未知操作: ${String(rule.op)}`)
     }
 
+    // .bak 只在确定要写入时才留，避免预检报错/无变化时残留备份
+    fs.copyFileSync(filepath, filepath + '.bak')
     fs.writeFileSync(filepath, JSON.stringify(merged, null, 2), 'utf8')
     ctx.onProgress(1, 1, path.basename(filepath))
     return msg

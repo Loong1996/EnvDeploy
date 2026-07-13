@@ -21,10 +21,12 @@ export function newRule(type: RuleType): Rule {
 export function moveRule(all: Rule[], draggedId: string, targetId: string): Rule[] {
   if (draggedId === targetId) return all
   const from = all.findIndex(r => r.id === draggedId)
-  if (from < 0 || !all.some(r => r.id === targetId)) return all
+  const to = all.findIndex(r => r.id === targetId)
+  if (from < 0 || to < 0) return all
   const next = [...all]
   const [moved] = next.splice(from, 1)
-  next.splice(next.findIndex(r => r.id === targetId), 0, moved)
+  // 向上拖落在目标之前，向下拖落在目标之后（移除自身后目标前移一位，索引 to 正是其后）——否则拖不到列表末尾
+  next.splice(to, 0, moved)
   return next
 }
 

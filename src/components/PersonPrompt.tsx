@@ -4,12 +4,14 @@ import Modal from './Modal'
 
 interface Props {
   people: Person[]
+  /** 上次会话记住的人员;默认选中它而不是重置回「全部」,× 关闭也保持不变 */
+  initial: string | null
   onConfirm(id: string | null): void
 }
 
-/** 启动时选择本次使用人员;默认停在「全部人员」(null)。之后仍可在顶栏切换。 */
-export default function PersonPrompt({ people, onConfirm }: Props) {
-  const [sel, setSel] = useState<string | null>(null)
+/** 启动时选择本次使用人员;默认停在上次记住的人员(无则「全部」)。之后仍可在顶栏切换。 */
+export default function PersonPrompt({ people, initial, onConfirm }: Props) {
+  const [sel, setSel] = useState<string | null>(initial)
   const options: { id: string | null; name: string }[] = [
     { id: null, name: '👥 全部人员' },
     ...people.map(p => ({ id: p.id, name: p.name })),
@@ -18,7 +20,7 @@ export default function PersonPrompt({ people, onConfirm }: Props) {
   return (
     <Modal
       title="选择使用人员"
-      onClose={() => onConfirm(null)}
+      onClose={() => onConfirm(initial)}
       footer={
         <>
           <div className="spacer" />

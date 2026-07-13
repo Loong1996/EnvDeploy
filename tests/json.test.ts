@@ -272,6 +272,35 @@ describe('jsonExecutor preserve', () => {
     )
     expect(res.changes.some(c => c.detail.includes('保留 1 项'))).toBe(true)
   })
+  it('overwrite 原文件是损坏 JSON 时照常覆盖（preserve 跳过，仍留 .bak）', async () => {
+    const p = path.join(tmp, 'a.json')
+    fs.writeFileSync(p, '{ not valid json !!!', 'utf8')
+    await jsonExecutor.execute(
+      rule({ op: 'overwrite', data: { x: 1 }, preserve: ['x'] }),
+      ctx(),
+    )
+    expect(JSON.parse(fs.readFileSync(p, 'utf8'))).toEqual({ x: 1 })
+    expect(fs.readFileSync(p + '.bak', 'utf8')).toBe('{ not valid json !!!')
+  })
+  it('plan overwrite 原文件损坏且带 preserve 时不抛错', async () => {
+    const p = path.join(tmp, 'a.json')
+    fs.writeFileSync(p, '<<broken>>', 'utf8')
+    const res = await jsonExecutor.plan(rule({ op: 'overwrite', data: { x: 1 }, preserve: ['x'] }), ctx())
+    expect(res.noop).toBe(false)
+  })
+  it('delete 无命中时不写文件、不留 .bak', async () => {
+    const p = writeJson({ a: 1 })
+    const before = fs.readFileSync(p, 'utf8')
+    const msg = await jsonExecutor.execute(rule({ op: 'delete', keys: ['missing.key'] }), ctx())
+    expect(msg).toContain('未改动')
+    expect(fs.readFileSync(p, 'utf8')).toBe(before) // 原文件一字未动(含格式)
+    expect(fs.existsSync(p + '.bak')).toBe(false)
+  })
+  it('append 冲突预检报错时不留 .bak', async () => {
+    const p = writeJson({ a: 1 })
+    await expect(jsonExecutor.execute(rule({ op: 'append', data: { a: 2 } }), ctx())).rejects.toThrow('已存在')
+    expect(fs.existsSync(p + '.bak')).toBe(false)
+  })
 })
 
 describe('jsonExecutor', () => {

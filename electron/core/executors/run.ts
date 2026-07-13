@@ -19,13 +19,21 @@ export function shellInvocation(shell: RunShell, scriptFile: string): { cmd: str
   }
 }
 
+/** PowerShell 5.1 的 `*>` 重定向默认写 UTF-16LE（带 BOM），按 BOM 识别编码解码 */
+export function decodeOutFile(buf: Buffer): string {
+  if (buf[0] === 0xff && buf[1] === 0xfe) return buf.toString('utf16le', 2)
+  if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) return buf.toString('utf8', 3)
+  return buf.toString('utf8')
+}
+
 function firstLine(s: string): string {
   const line = s.split(/\r?\n/).find(l => l.trim()) ?? ''
   return line.length > 80 ? line.slice(0, 80) + '…' : line
 }
 
 export function scriptBody(command: string, shell: RunShell): string {
-  if (shell === 'cmd') return `@chcp 65001 >nul\r\n${command}`   // no BOM for cmd; switch console to UTF-8
+  // cmd 的批处理解析器对 LF-only 行尾有边缘问题（goto 标签等），统一归一为 CRLF
+  if (shell === 'cmd') return `@chcp 65001 >nul\r\n${command.replace(/\r?\n/g, '\r\n')}`   // no BOM for cmd; switch console to UTF-8
   return `﻿${command}`                                     // UTF-8 BOM so Windows PowerShell reads UTF-8
 }
 
@@ -94,11 +102,13 @@ export const runExecutor: RuleExecutor<RunRule> = {
         const outFile = `${scriptFile}.out`
         const wrapperFile = path.join(path.dirname(scriptFile), 'elevated.ps1')
         const code = runElevated(inv, cwd ?? '', wrapperFile, outFile)
-        if (fs.existsSync(outFile)) {
-          for (const line of fs.readFileSync(outFile, 'utf8').split(/\r?\n/)) {
+        const ran = fs.existsSync(outFile) // wrapper 一旦运行，*> 重定向必然创建该文件；不存在说明提权本身没成功
+        if (ran) {
+          for (const line of decodeOutFile(fs.readFileSync(outFile)).split(/\r?\n/)) {
             if (line.trim()) ctx.onProgress(1, 1, line)
           }
         }
+        if (code !== 0 && !ran) throw new Error('提权失败：UAC 授权被拒绝或已取消')
         if (code !== 0) throw new Error(`命令以非零退出码结束: ${code}`)
         ctx.onProgress(1, 1, '（已提权执行）')
         return `命令执行成功（已提权）`
