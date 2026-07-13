@@ -367,3 +367,9 @@ textarea { resize: vertical; font-family: Consolas, monospace; }
   color: inherit;
   border: 1px solid var(--border, #2a2f3a);
 }
+
+/* ── 人员管理对话框 ───────────────────────────────── */
+.people-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.people-add input { flex: 1; }
+.people-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.people-row input { flex: 1; }

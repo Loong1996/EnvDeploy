@@ -8,6 +8,7 @@ import SelectionDialog from './components/SelectionDialog'
 import PreviewDialog from './components/PreviewDialog'
 import RunOverlay from './components/RunOverlay'
 import SettingsDialog from './components/SettingsDialog'
+import PeopleManager from './components/PeopleManager'
 import { moveRule, newRule } from './utils/rules'
 
 export interface LogEntry {
@@ -280,6 +281,14 @@ export default function App() {
             setLogs(l => [{ time: new Date().toLocaleString(), ok, summary, details: [] }, ...l])
           }
           onClose={() => setShowSettings(false)}
+        />
+      )}
+      {managingPeople && (
+        <PeopleManager
+          people={config.people}
+          rules={config.rules}
+          onChange={(people, rules) => update(c => ({ ...c, people, rules }))}
+          onClose={() => setManagingPeople(false)}
         />
       )}
     </div>
